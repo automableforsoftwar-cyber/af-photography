@@ -20,13 +20,15 @@ export type DashboardPanel =
   | "community"
   | "inbox"
   | "gallery"
-  | "account";
+  | "account"
+  | "activate";
 
 type LearningHubProps = {
   course: CourseModule | null;
   hasActiveCourse: boolean;
   panel: DashboardPanel;
   onBackToLearn: () => void;
+  onCourseUnlocked?: (courseId: string) => void;
 };
 
 export function LearningHub({
@@ -34,6 +36,7 @@ export function LearningHub({
   hasActiveCourse,
   panel,
   onBackToLearn: _onBackToLearn,
+  onCourseUnlocked,
 }: LearningHubProps) {
   void _onBackToLearn;
 
@@ -48,12 +51,16 @@ export function LearningHub({
           transition={{ duration: 0.28, ease }}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          {panel === "learn" ? (
+          {panel === "activate" ? (
+            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
+              <RedeemCodePanel onUnlocked={onCourseUnlocked} />
+            </div>
+          ) : panel === "learn" ? (
             hasActiveCourse && course ? (
               <AiLearningChat course={course} />
             ) : (
               <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
-                <RedeemCodePanel />
+                <RedeemCodePanel onUnlocked={onCourseUnlocked} />
               </div>
             )
           ) : panel === "community" ? (
@@ -61,7 +68,7 @@ export function LearningHub({
           ) : panel === "inbox" ? (
             <InboxView />
           ) : panel === "challenges" ? (
-            <PublicPhotoVoting />
+            <PublicPhotoVoting variant="competition" />
           ) : panel === "resources" ? (
             <div className="overflow-y-auto">
               <HubResources />

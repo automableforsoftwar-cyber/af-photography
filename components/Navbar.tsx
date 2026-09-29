@@ -4,16 +4,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthButton } from "@/components/AuthButton";
+import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { navLinks, site } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
+import { getPostAuthPath } from "@/lib/routing";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 export function Navbar() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
 
   useEffect(() => {
     const onScroll = () => {
@@ -31,6 +37,11 @@ export function Navbar() {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  const goAfterAuth = () => {
+    setAuthOpen(false);
+    router.push(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
+  };
 
   return (
     <header
@@ -75,24 +86,27 @@ export function Navbar() {
           ))}
         </ul>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {hydrated && isLoggedIn ? (
             <>
               <Link
-                href="/course-dashboard"
+                href={getPostAuthPath(unlockedCourseIds)}
                 className="hidden text-sm font-medium text-yellow-400 transition-colors hover:text-yellow-300 sm:inline"
               >
-                لوحة التعلم
+                {unlockedCourseIds.length
+                  ? "لوحة التعلم"
+                  : "تفعيل الكورس"}
               </Link>
               <AuthButton appearance="plain" />
             </>
           ) : (
-            <a
-              href="#curriculum"
-              className="text-sm font-medium text-slate-200 transition-colors hover:text-yellow-400"
+            <button
+              type="button"
+              onClick={() => setAuthOpen(true)}
+              className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
             >
-              اشترك
-            </a>
+              تسجيل الدخول / إنشاء حساب
+            </button>
           )}
           <button
             type="button"
@@ -144,10 +158,35 @@ export function Navbar() {
                   </a>
                 </motion.li>
               ))}
+              {!isLoggedIn ? (
+                <motion.li
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
+                >
+                  <button
+                    type="button"
+                    className="font-display text-start text-3xl font-bold text-yellow-400"
+                    onClick={() => {
+                      setOpen(false);
+                      setAuthOpen(true);
+                    }}
+                  >
+                    تسجيل الدخول / إنشاء حساب
+                  </button>
+                </motion.li>
+              ) : null}
             </ul>
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      <EnrollmentModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={goAfterAuth}
+        contextLabel="سجّل بإيميلك — لو لسه مفعّلتش كورس هنودّيك لصفحة التفعيل فوراً."
+      />
     </header>
   );
 }

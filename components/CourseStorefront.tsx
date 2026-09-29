@@ -8,6 +8,7 @@ import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { useAuthStore } from "@/lib/auth-store";
 import { modules, site } from "@/lib/content";
+import { getPostAuthPath } from "@/lib/routing";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -38,11 +39,13 @@ export function CourseStorefront() {
   const openCourse = (courseId: string) => {
     if (isLoggedIn && hasCourse(courseId)) {
       setActiveCourseId(courseId);
-      router.push(`/course-dashboard?course=${encodeURIComponent(courseId)}`);
+      router.push(
+        `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
+      );
       return;
     }
     if (isLoggedIn) {
-      router.push("/course-dashboard");
+      router.push("/dashboard/activate");
       return;
     }
     setAuthOpen(true);
@@ -139,7 +142,9 @@ export function CourseStorefront() {
       <EnrollmentModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onSuccess={() => router.push("/course-dashboard")}
+        onSuccess={() => {
+          router.push(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
+        }}
       />
     </div>
   );

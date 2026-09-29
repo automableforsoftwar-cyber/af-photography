@@ -11,14 +11,25 @@ export type CommunityPost = {
   voted?: boolean;
 };
 
+export type PostSort = "newest" | "votes";
+
 export async function fetchCommunityPosts(
   userId?: string | null,
+  sort: PostSort = "newest",
 ): Promise<CommunityPost[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("community_posts")
-    .select("id, user_id, title, author_label, image_url, vote_count, created_at")
-    .order("vote_count", { ascending: false })
-    .order("created_at", { ascending: false });
+    .select("id, user_id, title, author_label, image_url, vote_count, created_at");
+
+  if (sort === "votes") {
+    query = query
+      .order("vote_count", { ascending: false })
+      .order("created_at", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("community_posts fetch:", error);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CourseModules } from "@/components/CourseModules";
 import { DnaLoop } from "@/components/DnaLoop";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
@@ -15,10 +16,12 @@ import { Navbar } from "@/components/Navbar";
 import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
 import { useAuthStore } from "@/lib/auth-store";
 import type { CourseModule } from "@/lib/content";
+import { getPostAuthPath } from "@/lib/routing";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 export function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const hasCourse = useAuthStore((state) => state.hasCourse);
@@ -26,16 +29,29 @@ export function HomePage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authContext, setAuthContext] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (searchParams.get("auth") === "1") {
+      setAuthOpen(true);
+      setAuthContext("سجّل دخول عشان تكمل.");
+    }
+  }, [searchParams]);
+
+  const goAfterAuth = useCallback(() => {
+    router.replace(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
+  }, [router]);
+
   const goDashboard = useCallback(
     (courseId?: string) => {
-      if (courseId) setActiveCourseId(courseId);
-      router.push(
-        courseId
-          ? `/course-dashboard?course=${encodeURIComponent(courseId)}`
-          : "/course-dashboard",
-      );
+      if (courseId) {
+        setActiveCourseId(courseId);
+        router.push(
+          `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
+        );
+        return;
+      }
+      goAfterAuth();
     },
-    [router, setActiveCourseId],
+    [router, setActiveCourseId, goAfterAuth],
   );
 
   const handleEnroll = useCallback(
@@ -46,16 +62,15 @@ export function HomePage() {
         return;
       }
       if (isLoggedIn) {
-        // Logged in but course locked — go redeem in account
-        goDashboard();
+        router.push("/dashboard/activate");
         return;
       }
       setAuthContext(
-        `اعمل حساب عشان تتابع «${module.title}». فتح الكورس بيحصل بكود الاشتراك من لوحة التعلم.`,
+        `اعمل حساب عشان تتابع «${module.title}». فتح الكورس بيحصل بكود الاشتراك من صفحة التفعيل.`,
       );
       setAuthOpen(true);
     },
-    [hydrated, isLoggedIn, hasCourse, goDashboard],
+    [hydrated, isLoggedIn, hasCourse, goDashboard, router],
   );
 
   return (
@@ -74,7 +89,8 @@ export function HomePage() {
           id="public-gallery"
           className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20 sm:px-8 lg:px-10"
         >
-          <PublicPhotoVoting />
+          {/* Exact competition card UI — chronological feed, NO leaderboard */}
+          <PublicPhotoVoting variant="public" />
         </section>
       </main>
       <Footer />
@@ -82,7 +98,7 @@ export function HomePage() {
         open={authOpen}
         onClose={() => setAuthOpen(false)}
         contextLabel={authContext}
-        onSuccess={() => goDashboard()}
+        onSuccess={goAfterAuth}
       />
     </>
   );

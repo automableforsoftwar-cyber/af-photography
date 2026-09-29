@@ -1,11 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { site } from "@/lib/content";
 import { signInWithEmail, signUpWithEmail } from "@/lib/enroll";
 import { useAuthStore } from "@/lib/auth-store";
+import { getPostAuthPath } from "@/lib/routing";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -25,6 +27,7 @@ export function EnrollmentModal({
   onSuccess,
   contextLabel,
 }: EnrollmentModalProps) {
+  const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const [tab, setTab] = useState<AuthTab>("signup");
   const [email, setEmail] = useState("");
@@ -83,11 +86,14 @@ export function EnrollmentModal({
       userId: result.userId,
       email: result.email,
     });
-    // Pull unlocked courses from DB after session is live
     await useAuthStore.getState().refreshCourses();
+    const unlocked = useAuthStore.getState().unlockedCourseIds;
+    const destination = getPostAuthPath(unlocked);
     setLoading(false);
     onClose();
     onSuccess?.();
+    // Forced post-login routing: 0 courses → activation page immediately
+    router.replace(destination);
   };
 
   return (

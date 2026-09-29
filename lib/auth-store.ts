@@ -4,15 +4,28 @@ import type { Session, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { fetchUnlockedCourseIds, signOutSession } from "@/lib/enroll";
+import { clearAuthCookies, syncAuthCookies } from "@/lib/routing";
 import { supabase } from "@/lib/supabase";
+
+function pushCookies(state: {
+  isLoggedIn: boolean;
+  unlockedCourseIds: string[];
+}) {
+  if (!state.isLoggedIn) {
+    clearAuthCookies();
+    return;
+  }
+  syncAuthCookies({
+    isLoggedIn: true,
+    unlockedCount: state.unlockedCourseIds.length,
+  });
+}
 
 type AuthState = {
   isLoggedIn: boolean;
   userId: string | null;
   email: string;
-  /** Course IDs unlocked via redeemed codes. */
   unlockedCourseIds: string[];
-  /** Active course in the learning hub. */
   activeCourseId: string | null;
   login: (payload: {
     userId: string;
@@ -36,9 +49,9 @@ export const useAuthStore = create<AuthState>()(
       email: "",
       unlockedCourseIds: [],
       activeCourseId: null,
-      login: ({ userId, email, unlockedCourseIds, activeCourseId }) =>
-        set({
-          isLoggedIn: true,
+      login: ({ userId, email, unlockedCourseIds, activeCourseId }) => {
+        const next = {
+          isLoggedIn: true as const,
           userId,
           email: email.trim().toLowerCase(),
           unlockedCourseIds: unlockedCourseIds ?? get().unlockedCourseIds,
@@ -46,26 +59,36 @@ export const useAuthStore = create<AuthState>()(
             activeCourseId !== undefined
               ? activeCourseId
               : get().activeCourseId,
-        }),
+        };
+        set(next);
+        pushCookies(next);
+      },
       setActiveCourseId: (courseId) => set({ activeCourseId: courseId }),
       addUnlockedCourse: (courseId) => {
-        const next = new Set(get().unlockedCourseIds);
-        next.add(courseId);
+        const nextIds = Array.from(new Set([...get().unlockedCourseIds, courseId]));
+        const next = {
+          ...get(),
+          unlockedCourseIds: nextIds,
+          activeCourseId: courseId,
+        };
         set({
-          unlockedCourseIds: Array.from(next),
+          unlockedCourseIds: nextIds,
           activeCourseId: courseId,
         });
+        pushCookies(next);
       },
       hasCourse: (courseId) => get().unlockedCourseIds.includes(courseId),
       hydrateFromSession: async (session) => {
         if (!session?.user) {
-          set({
-            isLoggedIn: false,
+          const cleared = {
+            isLoggedIn: false as const,
             userId: null,
             email: "",
-            unlockedCourseIds: [],
+            unlockedCourseIds: [] as string[],
             activeCourseId: null,
-          });
+          };
+          set(cleared);
+          pushCookies(cleared);
           return;
         }
 
@@ -83,36 +106,46 @@ export const useAuthStore = create<AuthState>()(
             ? prevActive
             : (unlocked[0] ?? null);
 
-        set({
-          isLoggedIn: true,
+        const next = {
+          isLoggedIn: true as const,
           userId: user.id,
           email: profile?.email ?? user.email ?? get().email,
           unlockedCourseIds: unlocked,
           activeCourseId,
-        });
+        };
+        set(next);
+        pushCookies(next);
       },
       refreshCourses: async () => {
         const userId = get().userId;
         if (!userId) return;
         const unlocked = await fetchUnlockedCourseIds(userId);
         const prevActive = get().activeCourseId;
-        set({
+        const next = {
+          ...get(),
           unlockedCourseIds: unlocked,
           activeCourseId:
             prevActive && unlocked.includes(prevActive)
               ? prevActive
               : (unlocked[0] ?? null),
+        };
+        set({
+          unlockedCourseIds: next.unlockedCourseIds,
+          activeCourseId: next.activeCourseId,
         });
+        pushCookies(next);
       },
       logout: async () => {
         await signOutSession();
-        set({
-          isLoggedIn: false,
+        const cleared = {
+          isLoggedIn: false as const,
           userId: null,
           email: "",
-          unlockedCourseIds: [],
+          unlockedCourseIds: [] as string[],
           activeCourseId: null,
-        });
+        };
+        set(cleared);
+        pushCookies(cleared);
       },
     }),
     {
