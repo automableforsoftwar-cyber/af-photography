@@ -25,7 +25,6 @@ export function Navbar() {
     const onScroll = () => {
       setScrolled(window.scrollY > 24);
     };
-
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -42,6 +41,8 @@ export function Navbar() {
     setAuthOpen(false);
     router.push(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
   };
+
+  const dashboardHref = getPostAuthPath(unlockedCourseIds);
 
   return (
     <header
@@ -89,13 +90,12 @@ export function Navbar() {
         <div className="flex items-center gap-3 sm:gap-4">
           {hydrated && isLoggedIn ? (
             <>
+              {/* Login phase finished → Dashboard button only */}
               <Link
-                href={getPostAuthPath(unlockedCourseIds)}
-                className="hidden text-sm font-medium text-yellow-400 transition-colors hover:text-yellow-300 sm:inline"
+                href={dashboardHref}
+                className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
               >
-                {unlockedCourseIds.length
-                  ? "لوحة التعلم"
-                  : "تفعيل الكورس"}
+                Dashboard
               </Link>
               <AuthButton appearance="plain" />
             </>
@@ -158,12 +158,20 @@ export function Navbar() {
                   </a>
                 </motion.li>
               ))}
-              {!isLoggedIn ? (
-                <motion.li
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
-                >
+              <motion.li
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
+              >
+                {isLoggedIn ? (
+                  <Link
+                    href={dashboardHref}
+                    className="font-display text-3xl font-bold text-yellow-400"
+                    onClick={() => setOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
                   <button
                     type="button"
                     className="font-display text-start text-3xl font-bold text-yellow-400"
@@ -174,8 +182,8 @@ export function Navbar() {
                   >
                     تسجيل الدخول / إنشاء حساب
                   </button>
-                </motion.li>
-              ) : null}
+                )}
+              </motion.li>
             </ul>
           </motion.div>
         ) : null}

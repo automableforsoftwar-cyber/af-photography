@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { PremiumButton } from "@/components/ui/PremiumButton";
@@ -34,17 +33,19 @@ const galleryItem = {
 };
 
 type PublicPhotoVotingProps = {
-  /** public = chronological feed, no leaderboard. competition = ranked. */
+  /**
+   * public = showcase for outsiders (no upload, no leaderboard, newest first).
+   * competition = activated students inside dashboard (upload + ranking).
+   */
   variant?: "public" | "competition";
-  allowUpload?: boolean;
 };
 
 export function PublicPhotoVoting({
   variant = "public",
-  allowUpload = true,
 }: PublicPhotoVotingProps) {
-  const router = useRouter();
   const isPublic = variant === "public";
+  // STRICT: public outsiders never upload — only competition/dashboard students
+  const canUpload = !isPublic;
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const userId = useAuthStore((s) => s.userId);
   const email = useAuthStore((s) => s.email);
@@ -84,7 +85,7 @@ export function PublicPhotoVoting({
 
   const onVote = async (postId: string) => {
     if (!isLoggedIn) {
-      requireAuth("سجّل دخول عشان تصوّت — التصويت للمشاركين بس.");
+      requireAuth("سجّل دخول عشان تصوّت على شغل الطلبة.");
       return;
     }
     setBusyId(postId);
@@ -113,10 +114,8 @@ export function PublicPhotoVoting({
   };
 
   const onUpload = async () => {
-    if (!isLoggedIn) {
-      requireAuth("سجّل دخول عشان ترفع صورة للمعرض.");
-      return;
-    }
+    if (!canUpload) return;
+    if (!isLoggedIn) return;
     setUploadBusy(true);
     setNotice(null);
     const result = await uploadCommunityPost({
@@ -126,10 +125,6 @@ export function PublicPhotoVoting({
     });
     setUploadBusy(false);
     if (!result.ok) {
-      if (result.message === "login_required") {
-        requireAuth("سجّل دخول عشان ترفع صورة.");
-        return;
-      }
       setNotice("مقدرناش نرفع الصورة. تأكد من العنوان والرابط.");
       return;
     }
@@ -146,22 +141,22 @@ export function PublicPhotoVoting({
         isPublic ? "" : "order-1 lg:order-2"
       }`}
     >
-      {allowUpload ? (
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
-          <p className="text-xs font-medium text-yellow-400">
-            {isPublic ? "معرض المجتمع" : "المسابقات"}
-          </p>
-          <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
-            {isPublic
-              ? "فريم جديد كل يوم — شوف وشجّع"
-              : "شارك فريمك… أو صوّت للأحسن"}
-          </h2>
-          <p className="mt-2 text-sm text-slate-400">
-            {isPublic
-              ? "فيد نشط بالأحدث أولاً. التصويت والرفع للمستخدمين المسجّلين."
-              : "الكل يشوف الصور والأصوات. الرفع والتصويت للمستخدمين المسجّلين بس."}
-          </p>
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+        <p className="text-xs font-medium text-yellow-400">
+          {isPublic ? "معرض الطلبة" : "المسابقات"}
+        </p>
+        <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
+          {isPublic
+            ? "شوف شغل الطلبة — وصوّت للي عاجبك"
+            : "شارك فريمك… أو صوّت للأحسن"}
+        </h2>
+        <p className="mt-2 text-sm text-slate-400">
+          {isPublic
+            ? "معرض عام للأحدث أولاً. مفيش رفع من هنا — الرفع للطلبة المفعّلين جوه اللوحة بس. التصويت بعد تسجيل الدخول."
+            : "ارفع وصوّت من داخل اللوحة بعد تفعيل الكورس."}
+        </p>
 
+        {canUpload ? (
           <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
             <input
               value={title}
@@ -178,22 +173,16 @@ export function PublicPhotoVoting({
             />
             <PremiumButton
               disabled={uploadBusy || !title.trim() || !imageUrl.trim()}
-              onClick={() => {
-                if (!isLoggedIn) {
-                  requireAuth("سجّل دخول عشان ترفع صورة للمعرض.");
-                  return;
-                }
-                void onUpload();
-              }}
+              onClick={() => void onUpload()}
             >
               {uploadBusy ? "جاري الرفع…" : "انشر"}
             </PremiumButton>
           </div>
-          {notice ? (
-            <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
-          ) : null}
-        </section>
-      ) : null}
+        ) : null}
+        {notice ? (
+          <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
+        ) : null}
+      </section>
 
       <section>
         <h3 className="font-display text-xl font-bold text-white">
@@ -203,7 +192,7 @@ export function PublicPhotoVoting({
           <p className="mt-4 text-sm text-slate-500">بنحمّل المعرض…</p>
         ) : posts.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
-            لسه مفيش صور — كن أول واحد يرفع.
+            لسه مفيش صور معروضة.
           </p>
         ) : (
           <motion.div
@@ -267,6 +256,7 @@ export function PublicPhotoVoting({
     >
       {feed}
 
+      {/* Ranking ONLY inside dashboard competitions — never on public */}
       {!isPublic ? (
         <aside className="order-2 h-fit w-full shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:order-1 lg:sticky lg:top-0 lg:w-64 xl:w-72">
           <div dir="rtl">

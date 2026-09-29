@@ -89,7 +89,6 @@ export function HomePage() {
           id="public-gallery"
           className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20 sm:px-8 lg:px-10"
         >
-          {/* Exact competition card UI — chronological feed, NO leaderboard */}
           <PublicPhotoVoting variant="public" />
         </section>
       </main>

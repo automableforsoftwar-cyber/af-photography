@@ -28,7 +28,7 @@ export function CommunityWorkspace() {
       </header>
       <main className="mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
         <div className="min-h-[70vh]">
-          <PublicPhotoVoting />
+          <PublicPhotoVoting variant="public" />
         </div>
       </main>
     </div>
