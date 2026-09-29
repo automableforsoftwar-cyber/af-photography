@@ -3,25 +3,28 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { signOutSession } from "@/lib/enroll";
+import { fetchUnlockedCourseIds, signOutSession } from "@/lib/enroll";
 import { supabase } from "@/lib/supabase";
 
 type AuthState = {
   isLoggedIn: boolean;
   userId: string | null;
-  mobile: string;
-  paymentCode: string;
-  enrolledCourseId: string | null;
-  /** Apply a successful auth result into local state. */
+  email: string;
+  /** Course IDs unlocked via redeemed codes. */
+  unlockedCourseIds: string[];
+  /** Active course in the learning hub. */
+  activeCourseId: string | null;
   login: (payload: {
     userId: string;
-    mobile: string;
-    paymentCode: string;
-    courseId: string;
+    email: string;
+    unlockedCourseIds?: string[];
+    activeCourseId?: string | null;
   }) => void;
-  setCourseId: (courseId: string) => void;
-  /** Sync from Supabase session + profile row. */
+  setActiveCourseId: (courseId: string | null) => void;
+  addUnlockedCourse: (courseId: string) => void;
+  hasCourse: (courseId: string) => boolean;
   hydrateFromSession: (session: Session | null) => Promise<void>;
+  refreshCourses: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -30,27 +33,38 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       isLoggedIn: false,
       userId: null,
-      mobile: "",
-      paymentCode: "",
-      enrolledCourseId: null,
-      login: ({ userId, mobile, paymentCode, courseId }) =>
+      email: "",
+      unlockedCourseIds: [],
+      activeCourseId: null,
+      login: ({ userId, email, unlockedCourseIds, activeCourseId }) =>
         set({
           isLoggedIn: true,
           userId,
-          mobile: mobile.trim(),
-          paymentCode: paymentCode.trim(),
-          enrolledCourseId: courseId,
+          email: email.trim().toLowerCase(),
+          unlockedCourseIds: unlockedCourseIds ?? get().unlockedCourseIds,
+          activeCourseId:
+            activeCourseId !== undefined
+              ? activeCourseId
+              : get().activeCourseId,
         }),
-      setCourseId: (courseId) => set({ enrolledCourseId: courseId }),
+      setActiveCourseId: (courseId) => set({ activeCourseId: courseId }),
+      addUnlockedCourse: (courseId) => {
+        const next = new Set(get().unlockedCourseIds);
+        next.add(courseId);
+        set({
+          unlockedCourseIds: Array.from(next),
+          activeCourseId: courseId,
+        });
+      },
+      hasCourse: (courseId) => get().unlockedCourseIds.includes(courseId),
       hydrateFromSession: async (session) => {
         if (!session?.user) {
           set({
             isLoggedIn: false,
             userId: null,
-            mobile: "",
-            paymentCode: "",
-            // keep enrolledCourseId cleared on signed-out
-            enrolledCourseId: null,
+            email: "",
+            unlockedCourseIds: [],
+            activeCourseId: null,
           });
           return;
         }
@@ -58,18 +72,36 @@ export const useAuthStore = create<AuthState>()(
         const user = session.user as User;
         const { data: profile } = await supabase
           .from("profiles")
-          .select("phone_number, used_code")
+          .select("email")
           .eq("id", user.id)
           .maybeSingle();
 
-        const prevCourse = get().enrolledCourseId;
+        const unlocked = await fetchUnlockedCourseIds(user.id);
+        const prevActive = get().activeCourseId;
+        const activeCourseId =
+          prevActive && unlocked.includes(prevActive)
+            ? prevActive
+            : (unlocked[0] ?? null);
 
         set({
           isLoggedIn: true,
           userId: user.id,
-          mobile: profile?.phone_number ?? get().mobile,
-          paymentCode: profile?.used_code ?? get().paymentCode,
-          enrolledCourseId: prevCourse,
+          email: profile?.email ?? user.email ?? get().email,
+          unlockedCourseIds: unlocked,
+          activeCourseId,
+        });
+      },
+      refreshCourses: async () => {
+        const userId = get().userId;
+        if (!userId) return;
+        const unlocked = await fetchUnlockedCourseIds(userId);
+        const prevActive = get().activeCourseId;
+        set({
+          unlockedCourseIds: unlocked,
+          activeCourseId:
+            prevActive && unlocked.includes(prevActive)
+              ? prevActive
+              : (unlocked[0] ?? null),
         });
       },
       logout: async () => {
@@ -77,21 +109,21 @@ export const useAuthStore = create<AuthState>()(
         set({
           isLoggedIn: false,
           userId: null,
-          mobile: "",
-          paymentCode: "",
-          enrolledCourseId: null,
+          email: "",
+          unlockedCourseIds: [],
+          activeCourseId: null,
         });
       },
     }),
     {
-      name: "af-academy-auth-v3",
+      name: "af-academy-auth-v4",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,
         userId: state.userId,
-        mobile: state.mobile,
-        paymentCode: state.paymentCode,
-        enrolledCourseId: state.enrolledCourseId,
+        email: state.email,
+        unlockedCourseIds: state.unlockedCourseIds,
+        activeCourseId: state.activeCourseId,
       }),
     },
   ),

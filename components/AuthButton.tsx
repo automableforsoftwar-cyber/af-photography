@@ -11,7 +11,7 @@ export function AuthButton({
 }) {
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const mobile = useAuthStore((state) => state.mobile);
+  const email = useAuthStore((state) => state.email);
   const logout = useAuthStore((state) => state.logout);
   const signedIn = hydrated && isLoggedIn;
 
@@ -47,8 +47,8 @@ export function AuthButton({
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-yellow-400/50 bg-black/40 text-[0.6rem] font-medium text-yellow-400">
           أف
         </span>
-        <span className="hidden sm:inline" dir="ltr">
-          {mobile || "حسابك"}
+        <span className="hidden max-w-[9rem] truncate sm:inline" dir="ltr">
+          {email || "حسابك"}
         </span>
       </PremiumButton>
     );

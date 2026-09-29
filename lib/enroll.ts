@@ -2,88 +2,49 @@ import { supabase } from "@/lib/supabase";
 
 export const CODE_INVALID_MSG =
   "عفواً، هذا الكود غير صالح أو تم استنفاد الحد الأقصى للاستخدام.";
-export const PHONE_EXISTS_MSG = "عفواً، رقم الموبايل مسجل بالفعل.";
-export const LOGIN_INVALID_MSG =
-  "رقم الموبايل أو كلمة المرور غير صحيحة.";
+export const CODE_ALREADY_OWNED_MSG =
+  "إنت فاتح الكورس ده بالفعل على حسابك.";
+export const EMAIL_EXISTS_MSG = "عفواً، الإيميل ده مسجّل بالفعل.";
+export const LOGIN_INVALID_MSG = "الإيميل أو كلمة المرور غير صحيحة.";
 
 type AccessCodeRow = {
   id: string;
   code: string;
   current_uses: number;
   max_uses: number;
+  target_course: string;
 };
 
 export type AuthResult =
-  | {
-      ok: true;
-      userId: string;
-      phone: string;
-      paymentCode: string;
-    }
+  | { ok: true; userId: string; email: string }
   | { ok: false; message: string };
 
-/** Phone-as-email helper — avoids SMS OTP while using Supabase Auth. */
-export function phoneToEmail(phone: string) {
-  const normalized = phone.trim().replace(/\s+/g, "");
-  return `${normalized}@afp.com`;
-}
+export type RedeemResult =
+  | { ok: true; courseId: string }
+  | { ok: false; message: string };
 
-async function validateAccessCode(code: string): Promise<
-  | { ok: true; row: AccessCodeRow }
-  | { ok: false; message: string }
-> {
-  const { data, error } = await supabase
-    .from("access_codes")
-    .select("id, code, current_uses, max_uses")
-    .eq("code", code)
-    .maybeSingle();
-
-  if (error) {
-    console.error("access_codes query:", error);
-    return { ok: false, message: CODE_INVALID_MSG };
-  }
-
-  const row = data as AccessCodeRow | null;
-  if (!row || row.current_uses >= row.max_uses) {
-    return { ok: false, message: CODE_INVALID_MSG };
-  }
-
-  return { ok: true, row };
-}
-
-/**
- * Sign up with VIP code + phone + password (phone mapped to fake email).
- */
-export async function signUpWithVipCode(input: {
-  code: string;
-  phone: string;
+/** Sign up with real email + password (no course unlock). */
+export async function signUpWithEmail(input: {
+  email: string;
   password: string;
 }): Promise<AuthResult> {
-  const code = input.code.trim();
-  const phone = input.phone.trim().replace(/\s+/g, "");
+  const email = input.email.trim().toLowerCase();
   const password = input.password;
 
-  if (!code || !phone || password.length < 6) {
+  if (!email || password.length < 6) {
     return {
       ok: false,
       message:
         password.length < 6
           ? "كلمة المرور لازم تكون ٦ حروف على الأقل."
-          : CODE_INVALID_MSG,
+          : "اكتب إيميل صحيح.",
     };
   }
 
-  const validated = await validateAccessCode(code);
-  if (!validated.ok) return validated;
-
-  const fakeEmail = phoneToEmail(phone);
-
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-    email: fakeEmail,
+    email,
     password,
-    options: {
-      data: { phone, used_code: code },
-    },
+    options: { data: { email } },
   });
 
   if (signUpError) {
@@ -94,23 +55,16 @@ export async function signUpWithVipCode(input: {
       msg.includes("registered") ||
       msg.includes("exists")
     ) {
-      return { ok: false, message: PHONE_EXISTS_MSG };
+      return { ok: false, message: EMAIL_EXISTS_MSG };
     }
-    return {
-      ok: false,
-      message: "حصل خطأ أثناء إنشاء الحساب. حاول تاني.",
-    };
+    return { ok: false, message: "حصل خطأ أثناء إنشاء الحساب. حاول تاني." };
   }
 
   let userId = signUpData.user?.id ?? null;
 
-  // If email confirmation is required, session may be missing — try immediate login.
   if (!signUpData.session) {
     const { data: signInData, error: signInError } =
-      await supabase.auth.signInWithPassword({
-        email: fakeEmail,
-        password,
-      });
+      await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !signInData.user) {
       console.error("post-signup signIn:", signInError);
       return {
@@ -123,80 +77,41 @@ export async function signUpWithVipCode(input: {
   }
 
   if (!userId) {
-    return {
-      ok: false,
-      message: "حصل خطأ أثناء إنشاء الحساب. حاول تاني.",
-    };
-  }
-
-  const { error: updateError } = await supabase
-    .from("access_codes")
-    .update({ current_uses: validated.row.current_uses + 1 })
-    .eq("id", validated.row.id)
-    .eq("code", code);
-
-  if (updateError) {
-    console.error("access_codes update:", updateError);
-    return {
-      ok: false,
-      message: "حصل خطأ أثناء تفعيل الكود. حاول تاني.",
-    };
+    return { ok: false, message: "حصل خطأ أثناء إنشاء الحساب. حاول تاني." };
   }
 
   const { error: insertError } = await supabase.from("profiles").insert({
     id: userId,
-    phone_number: phone,
-    used_code: code,
+    email,
+    phone_number: null,
+    used_code: null,
   });
 
-  if (insertError) {
+  if (insertError && insertError.code !== "23505") {
     console.error("profiles insert:", insertError);
-    if (insertError.code === "23505") {
-      return { ok: false, message: PHONE_EXISTS_MSG };
-    }
-    // Best-effort rollback of use count
-    await supabase
-      .from("access_codes")
-      .update({ current_uses: validated.row.current_uses })
-      .eq("id", validated.row.id);
     return {
       ok: false,
       message: "حصل خطأ أثناء إنشاء الملف الشخصي. حاول تاني.",
     };
   }
 
-  // Seed progress row (non-blocking)
-  await supabase.from("user_progress").upsert(
-    { user_id: userId, completed_lessons: [], score: 0 },
-    { onConflict: "user_id" },
-  );
-
-  return {
-    ok: true,
-    userId,
-    phone,
-    paymentCode: code,
-  };
+  return { ok: true, userId, email };
 }
 
-/**
- * Log in with phone + password (phone mapped to fake email).
- */
-export async function signInWithPhone(input: {
-  phone: string;
+/** Log in with real email + password. */
+export async function signInWithEmail(input: {
+  email: string;
   password: string;
 }): Promise<AuthResult> {
-  const phone = input.phone.trim().replace(/\s+/g, "");
+  const email = input.email.trim().toLowerCase();
   const password = input.password;
 
-  if (!phone || !password) {
+  if (!email || !password) {
     return { ok: false, message: LOGIN_INVALID_MSG };
   }
 
-  const fakeEmail = phoneToEmail(phone);
-
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: fakeEmail,
+    email,
     password,
   });
 
@@ -205,18 +120,114 @@ export async function signInWithPhone(input: {
     return { ok: false, message: LOGIN_INVALID_MSG };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("phone_number, used_code")
-    .eq("id", data.user.id)
+  // Ensure profile row exists (idempotent)
+  await supabase.from("profiles").upsert(
+    { id: data.user.id, email },
+    { onConflict: "id" },
+  );
+
+  return { ok: true, userId: data.user.id, email };
+}
+
+/**
+ * Redeem a single-use course code. Unlocks ONLY target_course for this user.
+ */
+export async function redeemCourseCode(codeInput: string): Promise<RedeemResult> {
+  const code = codeInput.trim();
+  if (!code) return { ok: false, message: CODE_INVALID_MSG };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, message: "لازم تسجّل دخول الأول." };
+  }
+
+  const { data: accessRow, error: codeError } = await supabase
+    .from("access_codes")
+    .select("id, code, current_uses, max_uses, target_course")
+    .eq("code", code)
     .maybeSingle();
 
-  return {
-    ok: true,
-    userId: data.user.id,
-    phone: profile?.phone_number ?? phone,
-    paymentCode: profile?.used_code ?? "",
-  };
+  if (codeError) {
+    console.error("access_codes query:", codeError);
+    return { ok: false, message: CODE_INVALID_MSG };
+  }
+
+  const row = accessRow as AccessCodeRow | null;
+  if (!row || row.current_uses >= row.max_uses || !row.target_course) {
+    return { ok: false, message: CODE_INVALID_MSG };
+  }
+
+  const courseId = row.target_course;
+
+  const { data: existing } = await supabase
+    .from("user_courses")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (existing) {
+    return { ok: false, message: CODE_ALREADY_OWNED_MSG };
+  }
+
+  const { error: updateError } = await supabase
+    .from("access_codes")
+    .update({ current_uses: row.current_uses + 1 })
+    .eq("id", row.id)
+    .eq("code", code);
+
+  if (updateError) {
+    console.error("access_codes update:", updateError);
+    return { ok: false, message: "حصل خطأ أثناء تفعيل الكود. حاول تاني." };
+  }
+
+  const { error: enrollError } = await supabase.from("user_courses").insert({
+    user_id: user.id,
+    course_id: courseId,
+    unlocked_via_code: code,
+  });
+
+  if (enrollError) {
+    console.error("user_courses insert:", enrollError);
+    await supabase
+      .from("access_codes")
+      .update({ current_uses: row.current_uses })
+      .eq("id", row.id);
+    if (enrollError.code === "23505") {
+      return { ok: false, message: CODE_ALREADY_OWNED_MSG };
+    }
+    return { ok: false, message: "حصل خطأ أثناء فتح الكورس. حاول تاني." };
+  }
+
+  await supabase.from("user_progress").upsert(
+    {
+      user_id: user.id,
+      course_id: courseId,
+      completed_lessons: [],
+      score: 0,
+    },
+    { onConflict: "user_id,course_id" },
+  );
+
+  return { ok: true, courseId };
+}
+
+export async function fetchUnlockedCourseIds(
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("user_courses")
+    .select("course_id")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("user_courses fetch:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => row.course_id as string);
 }
 
 export async function signOutSession() {

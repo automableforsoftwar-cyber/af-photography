@@ -5,10 +5,11 @@ import type { CourseModule } from "@/lib/content";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
-import { ChallengesView } from "@/components/dashboard/ChallengesView";
+import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
+import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -22,13 +23,15 @@ export type DashboardPanel =
   | "account";
 
 type LearningHubProps = {
-  course: CourseModule;
+  course: CourseModule | null;
+  hasActiveCourse: boolean;
   panel: DashboardPanel;
   onBackToLearn: () => void;
 };
 
 export function LearningHub({
   course,
+  hasActiveCourse,
   panel,
   onBackToLearn: _onBackToLearn,
 }: LearningHubProps) {
@@ -46,13 +49,19 @@ export function LearningHub({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           {panel === "learn" ? (
-            <AiLearningChat course={course} />
+            hasActiveCourse && course ? (
+              <AiLearningChat course={course} />
+            ) : (
+              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
+                <RedeemCodePanel />
+              </div>
+            )
           ) : panel === "community" ? (
             <CommunityView />
           ) : panel === "inbox" ? (
             <InboxView />
           ) : panel === "challenges" ? (
-            <ChallengesView />
+            <PublicPhotoVoting />
           ) : panel === "resources" ? (
             <div className="overflow-y-auto">
               <HubResources />
@@ -60,7 +69,7 @@ export function LearningHub({
           ) : panel === "gallery" ? (
             <DashboardGallery />
           ) : panel === "account" ? (
-            <AccountView course={course} />
+            <AccountView />
           ) : null}
         </motion.div>
       </AnimatePresence>

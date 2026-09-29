@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import {
@@ -23,11 +23,30 @@ const pillActions: { id: DashboardPanel; label: string }[] = [
 
 export function CourseDashboardView() {
   const searchParams = useSearchParams();
-  const enrolledCourseId = useAuthStore((s) => s.enrolledCourseId);
-  const course = getModuleById(
-    searchParams.get("course") ?? enrolledCourseId,
+  const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
+  const activeCourseId = useAuthStore((s) => s.activeCourseId);
+  const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
+  const hasCourse = useAuthStore((s) => s.hasCourse);
+
+  const paramCourse = searchParams.get("course");
+  const preferred =
+    paramCourse && hasCourse(paramCourse)
+      ? paramCourse
+      : activeCourseId && hasCourse(activeCourseId)
+        ? activeCourseId
+        : (unlockedCourseIds[0] ?? null);
+
+  useEffect(() => {
+    if (preferred && preferred !== activeCourseId) {
+      setActiveCourseId(preferred);
+    }
+  }, [preferred, activeCourseId, setActiveCourseId]);
+
+  const course = preferred ? getModuleById(preferred) : null;
+  const hasActiveCourse = Boolean(preferred && course);
+  const [panel, setPanel] = useState<DashboardPanel>(
+    hasActiveCourse ? "learn" : "account",
   );
-  const [panel, setPanel] = useState<DashboardPanel>("learn");
 
   return (
     <AuthGate>
@@ -62,6 +81,7 @@ export function CourseDashboardView() {
         <main id="main" className="flex min-h-0 flex-1 flex-col pt-20">
           <LearningHub
             course={course}
+            hasActiveCourse={hasActiveCourse}
             panel={panel}
             onBackToLearn={() => setPanel("learn")}
           />

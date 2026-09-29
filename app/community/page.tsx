@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { CommunityWorkspace } from "@/components/community/CommunityWorkspace";
 
 export const metadata: Metadata = {
-  title: "المجتمع — AF P",
+  title: "معرض التصويت — AF P",
 };
 
 export default function CommunityPage() {

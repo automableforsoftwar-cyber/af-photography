@@ -19,6 +19,7 @@ export const navLinks = [
   { label: "الـ DNA", href: "#dna" },
   { label: "الرحلة", href: "#journey" },
   { label: "الكورسات", href: "#curriculum" },
+  { label: "التصويت", href: "#public-gallery" },
   { label: "المعرض", href: "#gallery" },
   { label: "المدرّب", href: "#mentor" },
 ] as const;

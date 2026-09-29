@@ -12,6 +12,7 @@ import { Hero } from "@/components/Hero";
 import { Instructor } from "@/components/Instructor";
 import { LearningJourney } from "@/components/LearningJourney";
 import { Navbar } from "@/components/Navbar";
+import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
 import { useAuthStore } from "@/lib/auth-store";
 import type { CourseModule } from "@/lib/content";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
@@ -20,29 +21,41 @@ export function HomePage() {
   const router = useRouter();
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const enrolledCourseId = useAuthStore((state) => state.enrolledCourseId);
-  const [enrollingModule, setEnrollingModule] = useState<CourseModule | null>(
-    null,
+  const hasCourse = useAuthStore((state) => state.hasCourse);
+  const setActiveCourseId = useAuthStore((state) => state.setActiveCourseId);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authContext, setAuthContext] = useState<string | null>(null);
+
+  const goDashboard = useCallback(
+    (courseId?: string) => {
+      if (courseId) setActiveCourseId(courseId);
+      router.push(
+        courseId
+          ? `/course-dashboard?course=${encodeURIComponent(courseId)}`
+          : "/course-dashboard",
+      );
+    },
+    [router, setActiveCourseId],
   );
-
-  const closeAuth = useCallback(() => {
-    setEnrollingModule(null);
-  }, []);
-
-  const goDashboard = useCallback(() => {
-    router.push("/course-dashboard");
-  }, [router]);
 
   const handleEnroll = useCallback(
     (module: CourseModule) => {
       if (!hydrated) return;
-      if (isLoggedIn && enrolledCourseId === module.id) {
+      if (isLoggedIn && hasCourse(module.id)) {
+        goDashboard(module.id);
+        return;
+      }
+      if (isLoggedIn) {
+        // Logged in but course locked — go redeem in account
         goDashboard();
         return;
       }
-      setEnrollingModule(module);
+      setAuthContext(
+        `اعمل حساب عشان تتابع «${module.title}». فتح الكورس بيحصل بكود الاشتراك من لوحة التعلم.`,
+      );
+      setAuthOpen(true);
     },
-    [hydrated, isLoggedIn, enrolledCourseId, goDashboard],
+    [hydrated, isLoggedIn, hasCourse, goDashboard],
   );
 
   return (
@@ -57,12 +70,19 @@ export function HomePage() {
         <CourseModules onEnroll={handleEnroll} />
         <Instructor />
         <Gallery />
+        <section
+          id="public-gallery"
+          className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20 sm:px-8 lg:px-10"
+        >
+          <PublicPhotoVoting />
+        </section>
       </main>
       <Footer />
       <EnrollmentModal
-        course={enrollingModule}
-        onClose={closeAuth}
-        onSuccess={goDashboard}
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        contextLabel={authContext}
+        onSuccess={() => goDashboard()}
       />
     </>
   );
