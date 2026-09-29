@@ -56,16 +56,16 @@ export function RedeemCodePanel({
         compact ? "p-5" : "p-8"
       }`}
     >
-      <p className="text-sm font-medium text-yellow-400">فتح كورس بكود</p>
+      <p className="text-sm font-medium text-yellow-400">VIP Code</p>
       <h3
         className={`mt-2 font-display font-bold text-white ${
           compact ? "text-xl" : "text-2xl sm:text-3xl"
         }`}
       >
-        فعّل كود الاشتراك
+        أدخل كود الـ VIP
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        كل كود يفتح كورس واحد محدد فقط. تقدر تفعّل أكتر من كود على نفس الحساب.
+        حط الكود اللي وصلك بعد الاشتراك — كل كود يفتح كورس واحد. تقدر تفعّل أكتر من كود على نفس الحساب.
       </p>
 
       {unlockedCourseIds.length > 0 ? (

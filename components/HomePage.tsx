@@ -13,7 +13,7 @@ import { Hero } from "@/components/Hero";
 import { Instructor } from "@/components/Instructor";
 import { LearningJourney } from "@/components/LearningJourney";
 import { Navbar } from "@/components/Navbar";
-import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
+import { PublicShowcaseGallery } from "@/components/community/PublicShowcaseGallery";
 import { useAuthStore } from "@/lib/auth-store";
 import type { CourseModule } from "@/lib/content";
 import { getPostAuthPath } from "@/lib/routing";
@@ -62,7 +62,7 @@ export function HomePage() {
         return;
       }
       if (isLoggedIn) {
-        router.push("/dashboard/activate");
+        router.push("/dashboard");
         return;
       }
       setAuthContext(
@@ -89,7 +89,7 @@ export function HomePage() {
           id="public-gallery"
           className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20 sm:px-8 lg:px-10"
         >
-          <PublicPhotoVoting variant="public" />
+          <PublicShowcaseGallery />
         </section>
       </main>
       <Footer />

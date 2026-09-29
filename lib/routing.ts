@@ -11,10 +11,10 @@ export const DASHBOARD_PROTECTED_PREFIXES = [
   "/dashboard/account",
 ] as const;
 
-/** Post-auth destination — activation if no courses unlocked yet. */
+/** Post-auth destination — always the main dashboard (VIP code shown in-place if locked). */
 export function getPostAuthPath(unlockedCourseIds: string[]): string {
   if (!unlockedCourseIds.length) {
-    return "/dashboard/activate";
+    return "/dashboard";
   }
   const courseId = unlockedCourseIds[0];
   return `/dashboard/courses?course=${encodeURIComponent(courseId)}`;

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export default function DashboardIndexPage() {
-  redirect("/dashboard/activate");
+  return <DashboardShell section="home" />;
 }

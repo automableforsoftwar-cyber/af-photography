@@ -5,7 +5,7 @@ import type { CourseModule } from "@/lib/content";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
-import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
+import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
@@ -20,8 +20,7 @@ export type DashboardPanel =
   | "community"
   | "inbox"
   | "gallery"
-  | "account"
-  | "activate";
+  | "account";
 
 type LearningHubProps = {
   course: CourseModule | null;
@@ -51,11 +50,7 @@ export function LearningHub({
           transition={{ duration: 0.28, ease }}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          {panel === "activate" ? (
-            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
-              <RedeemCodePanel onUnlocked={onCourseUnlocked} />
-            </div>
-          ) : panel === "learn" ? (
+          {panel === "learn" ? (
             hasActiveCourse && course ? (
               <AiLearningChat course={course} />
             ) : (
@@ -68,7 +63,7 @@ export function LearningHub({
           ) : panel === "inbox" ? (
             <InboxView />
           ) : panel === "challenges" ? (
-            <PublicPhotoVoting variant="competition" />
+            <CompetitionPhotoVoting />
           ) : panel === "resources" ? (
             <div className="overflow-y-auto">
               <HubResources />

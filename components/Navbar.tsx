@@ -95,7 +95,7 @@ export function Navbar() {
                 href={dashboardHref}
                 className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
               >
-                Dashboard
+                لوحة التحكم
               </Link>
               <AuthButton appearance="plain" />
             </>
@@ -105,7 +105,7 @@ export function Navbar() {
               onClick={() => setAuthOpen(true)}
               className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
             >
-              تسجيل الدخول / إنشاء حساب
+              تسجيل دخول / إنشاء حساب
             </button>
           )}
           <button
@@ -169,7 +169,7 @@ export function Navbar() {
                     className="font-display text-3xl font-bold text-yellow-400"
                     onClick={() => setOpen(false)}
                   >
-                    Dashboard
+                    لوحة التحكم
                   </Link>
                 ) : (
                   <button
@@ -180,7 +180,7 @@ export function Navbar() {
                       setAuthOpen(true);
                     }}
                   >
-                    تسجيل الدخول / إنشاء حساب
+                    تسجيل دخول / إنشاء حساب
                   </button>
                 )}
               </motion.li>

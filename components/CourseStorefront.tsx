@@ -45,7 +45,7 @@ export function CourseStorefront() {
       return;
     }
     if (isLoggedIn) {
-      router.push("/dashboard/activate");
+      router.push("/dashboard");
       return;
     }
     setAuthOpen(true);

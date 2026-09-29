@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PublicPhotoVoting } from "@/components/community/PublicPhotoVoting";
+import { PublicShowcaseGallery } from "@/components/community/PublicShowcaseGallery";
 import { site } from "@/lib/content";
 
 export function CommunityWorkspace() {
@@ -16,7 +16,7 @@ export function CommunityWorkspace() {
             معرض التصويت العام
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            شوف وشجّع — التصويت والرفع بعد تسجيل الدخول.
+            شوف وشجّع — التصويت بعد تسجيل الدخول.
           </p>
         </div>
         <Link
@@ -28,7 +28,7 @@ export function CommunityWorkspace() {
       </header>
       <main className="mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
         <div className="min-h-[70vh]">
-          <PublicPhotoVoting variant="public" />
+          <PublicShowcaseGallery />
         </div>
       </main>
     </div>
