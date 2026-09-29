@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  --af-green: #fbbf24;
+  --af-green-deep: #050505;
+  --af-dark: #050505;
+  --af-white: #ffffff;
+  --background: #050505;
+  --foreground: #fafafa;
+  --copy: #94a3b8;
+  --gold: #fbbf24;
+  --gold-soft: #fcd34d;
+  --muted: #94a3b8;
+  --surface: #0a0a0a;
+  --line: rgba(251, 191, 36, 0.28);
+  --yellow: #fbbf24;
+  --yellow-soft: #fcd34d;
+}
+
+@theme inline {
+  --color-af-green: var(--af-green);
+  --color-af-green-deep: var(--af-green-deep);
+  --color-af-dark: var(--af-dark);
+  --color-af-white: var(--af-white);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-copy: var(--copy);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-yellow: var(--yellow);
+  --color-yellow-soft: var(--yellow-soft);
+  --font-sans: var(--font-alexandria);
+  --font-display: var(--font-kufam);
+  --font-serif: var(--font-kufam);
+  --font-mono: var(--font-alexandria);
+}
+
+html {
+  scroll-behavior: smooth;
+  background: #050505;
+  overflow-x: clip;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: #050505;
+  color: #94a3b8;
+  font-family: var(--font-alexandria), Tahoma, "Segoe UI", ui-sans-serif, sans-serif;
+  font-weight: 400;
+  line-height: 1.8;
+  overflow-x: clip;
+  text-align: start;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  color: #fff;
+  font-family: var(--font-kufam), var(--font-alexandria), Tahoma, sans-serif;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+p,
+li,
+dd,
+blockquote,
+label {
+  line-height: 1.8;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--yellow);
+  color: #050505;
+}
+
+@utility film-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@utility kicker {
+  font-family: var(--font-kufam), var(--font-alexandria), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  color: var(--gold-soft);
+}
+
+@utility font-display {
+  font-family: var(--font-kufam), var(--font-alexandria), Tahoma, sans-serif;
+}
+
+@utility text-blend {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+@utility glass-panel {
+  background: rgba(5, 5, 5, 0.55);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@utility hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+@utility premium-scroll {
+  direction: ltr;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251, 191, 36, 0.35) transparent;
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(251, 191, 36, 0.28);
+    border-radius: 10px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background: rgba(251, 191, 36, 0.5);
+  }
+}
+
+@utility bg-gradient-to-inline-end {
+  --tw-gradient-position: to inline-end in oklab;
+  background-image: linear-gradient(var(--tw-gradient-stops));
+}
