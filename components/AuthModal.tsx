@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
-import { useAuthStore } from "@/lib/auth-store";
 import type { CourseModule } from "@/lib/content";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -18,7 +17,6 @@ type AuthMode = "register" | "login";
 
 export function AuthModal({ module, onClose }: AuthModalProps) {
   const router = useRouter();
-  const login = useAuthStore((state) => state.login);
   const [mode, setMode] = useState<AuthMode>("register");
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -114,14 +112,9 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
                 className="mt-7 flex flex-col gap-4"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  const courseId = module.id;
-                  login({
-                    mobile: "",
-                    paymentCode: "legacy",
-                    courseId,
-                  });
+                  // Legacy modal — prefer EnrollmentModal (VIP + session auth).
                   onClose();
-                  router.push(`/payment?course=${courseId}`);
+                  router.push(`/payment?course=${module.id}`);
                 }}
               >
                 {mode === "register" ? (

@@ -5,10 +5,12 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import type { CourseModule } from "@/lib/content";
 import { site } from "@/lib/content";
-import { enrollWithAccessCode } from "@/lib/enroll";
+import { signInWithPhone, signUpWithVipCode } from "@/lib/enroll";
 import { useAuthStore } from "@/lib/auth-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
+
+type AuthTab = "signup" | "login";
 
 type EnrollmentModalProps = {
   course: CourseModule | null;
@@ -22,8 +24,10 @@ export function EnrollmentModal({
   onSuccess,
 }: EnrollmentModalProps) {
   const login = useAuthStore((s) => s.login);
+  const [tab, setTab] = useState<AuthTab>("signup");
   const [code, setCode] = useState("");
   const [mobile, setMobile] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleId = useId();
@@ -47,24 +51,31 @@ export function EnrollmentModal({
 
   useEffect(() => {
     if (!open) {
+      setTab("signup");
       setCode("");
       setMobile("");
+      setPassword("");
       setError(null);
       setLoading(false);
     }
   }, [open]);
 
+  const canSubmit =
+    tab === "signup"
+      ? Boolean(code.trim() && mobile.trim() && password.length >= 6)
+      : Boolean(mobile.trim() && password.length >= 6);
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!course || !code.trim() || !mobile.trim() || loading) return;
+    if (!course || !canSubmit || loading) return;
 
     setLoading(true);
     setError(null);
 
-    const result = await enrollWithAccessCode({
-      code,
-      phone: mobile,
-    });
+    const result =
+      tab === "signup"
+        ? await signUpWithVipCode({ code, phone: mobile, password })
+        : await signInWithPhone({ phone: mobile, password });
 
     if (!result.ok) {
       setError(result.message);
@@ -73,8 +84,9 @@ export function EnrollmentModal({
     }
 
     login({
-      paymentCode: code,
-      mobile,
+      userId: result.userId,
+      mobile: result.phone,
+      paymentCode: result.paymentCode,
       courseId: course.id,
     });
     setLoading(false);
@@ -137,28 +149,53 @@ export function EnrollmentModal({
                 أهلاً بيك في الكوميونيتي
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                هتفتح «{course.title}» بعد ما تدخل كود الاشتراك ورقم الموبايل.
-                معاك {site.founder} ({site.founderEn}).
+                هتفتح «{course.title}» بحساب آمن — رقم الموبايل + كلمة مرور.
               </p>
 
+              <div className="mt-5 grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-black/40 p-1">
+                <TabButton
+                  active={tab === "signup"}
+                  disabled={loading}
+                  onClick={() => {
+                    setTab("signup");
+                    setError(null);
+                  }}
+                >
+                  إنشاء حساب
+                </TabButton>
+                <TabButton
+                  active={tab === "login"}
+                  disabled={loading}
+                  onClick={() => {
+                    setTab("login");
+                    setError(null);
+                  }}
+                >
+                  تسجيل دخول
+                </TabButton>
+              </div>
+
               <form onSubmit={onSubmit} className="mt-6 space-y-4">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-slate-500">
-                    كود الاشتراك
-                  </span>
-                  <input
-                    value={code}
-                    onChange={(e) => {
-                      setCode(e.target.value);
-                      setError(null);
-                    }}
-                    required
-                    disabled={loading}
-                    autoComplete="off"
-                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
-                    placeholder="اكتب كود الدفع"
-                  />
-                </label>
+                {tab === "signup" ? (
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-slate-500">
+                      كود الاشتراك (VIP)
+                    </span>
+                    <input
+                      value={code}
+                      onChange={(e) => {
+                        setCode(e.target.value);
+                        setError(null);
+                      }}
+                      required
+                      disabled={loading}
+                      autoComplete="off"
+                      className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
+                      placeholder="اكتب كود الدفع"
+                    />
+                  </label>
+                ) : null}
+
                 <label className="block space-y-1.5">
                   <span className="text-xs font-medium text-slate-500">
                     رقم الموبايل
@@ -180,6 +217,29 @@ export function EnrollmentModal({
                   />
                 </label>
 
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-slate-500">
+                    كلمة المرور
+                  </span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError(null);
+                    }}
+                    required
+                    minLength={6}
+                    disabled={loading}
+                    autoComplete={
+                      tab === "signup" ? "new-password" : "current-password"
+                    }
+                    dir="ltr"
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
+                    placeholder="٦ حروف على الأقل"
+                  />
+                </label>
+
                 {error ? (
                   <p
                     role="alert"
@@ -191,7 +251,7 @@ export function EnrollmentModal({
 
                 <PremiumButton
                   type="submit"
-                  disabled={loading || !code.trim() || !mobile.trim()}
+                  disabled={loading || !canSubmit}
                   className="mt-2 w-full"
                 >
                   {loading ? (
@@ -202,8 +262,10 @@ export function EnrollmentModal({
                       />
                       جاري التحقق…
                     </span>
+                  ) : tab === "signup" ? (
+                    "إنشاء حساب"
                   ) : (
-                    "دخول"
+                    "تسجيل دخول"
                   )}
                 </PremiumButton>
               </form>
@@ -212,5 +274,33 @@ export function EnrollmentModal({
         </motion.div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+function TabButton({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+        active
+          ? "bg-yellow-400 text-[#050505]"
+          : "text-slate-400 hover:text-slate-200"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
