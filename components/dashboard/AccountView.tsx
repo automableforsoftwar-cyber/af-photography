@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { AuthButton } from "@/components/AuthButton";
 import { getModuleById, modules } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -87,6 +88,13 @@ export function AccountView() {
             <p className="text-slate-300 leading-relaxed">{active.description}</p>
           </>
         ) : null}
+
+        <div className="mt-8 border-t border-white/10 pt-6">
+          <p className="mb-3 text-xs text-slate-500">
+            زر «خروج» في اللوحة بيرجعك للرئيسية ويفضّلك مسجّل. تسجيل الخروج الكامل من هنا:
+          </p>
+          <AuthButton appearance="plain" intent="logout" />
+        </div>
       </motion.div>
     </div>
   );
