@@ -39,9 +39,10 @@ export function RedeemCodePanel({
       return;
     }
 
+    // Strict mapping: unlock ONLY result.courseId (from access_codes.target_course)
     addUnlockedCourse(result.courseId);
     const course = getModuleById(result.courseId);
-    setSuccess(`تم فتح «${course.title}» على حسابك.`);
+    setSuccess(`تم فتح «${course.title}» فقط — باقي الكورسات لسه مقفولة.`);
     setCode("");
     setLoading(false);
     onUnlocked?.(result.courseId);
@@ -56,16 +57,17 @@ export function RedeemCodePanel({
         compact ? "p-5" : "p-8"
       }`}
     >
-      <p className="text-sm font-medium text-yellow-400">VIP Code</p>
+      <p className="text-sm font-medium text-yellow-400">Course VIP Code</p>
       <h3
         className={`mt-2 font-display font-bold text-white ${
           compact ? "text-xl" : "text-2xl sm:text-3xl"
         }`}
       >
-        أدخل كود الـ VIP
+        Enter Course VIP Code
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        حط الكود اللي وصلك بعد الاشتراك — كل كود يفتح كورس واحد. تقدر تفعّل أكتر من كود على نفس الحساب.
+        كل كود مربوط بكورس واحد (`target_course`). التفعيل بيفتح الكورس ده بس على
+        حسابك — وتقدر تضيف كورسات تانية بكودات منفصلة لاحقاً.
       </p>
 
       {unlockedCourseIds.length > 0 ? (
@@ -84,7 +86,7 @@ export function RedeemCodePanel({
         </ul>
       ) : (
         <p className="mt-4 text-sm text-slate-500">
-          لسه مفيش كورسات مفتوحة — حط الكود اللي وصلك بعد الاشتراك.
+          لسه مفيش كورسات مفتوحة على الحساب.
         </p>
       )}
 
@@ -98,6 +100,7 @@ export function RedeemCodePanel({
           }}
           disabled={loading}
           placeholder="AFP-XXXX-XXXX"
+          aria-label="Enter Course VIP Code"
           dir="ltr"
           className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40 disabled:opacity-50"
         />

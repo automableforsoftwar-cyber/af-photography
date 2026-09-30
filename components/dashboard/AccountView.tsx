@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { getModuleById, modules } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
-import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -28,7 +28,7 @@ export function AccountView() {
         </h2>
         <div className="my-4 border-b border-white/10" />
         <p className="text-slate-300 leading-relaxed">
-          حسابك مستقل عن الكورسات. افتح أي كورس بكود اشتراك خاص بيه — وتقدر تجمع
+          حسابك مستقل عن الكورسات. تفعيل الأكواد من صفحة «الكورسات» — وتقدر تجمع
           أكتر من مسار على نفس الحساب.
         </p>
 
@@ -59,8 +59,21 @@ export function AccountView() {
                 );
               })}
             </ul>
+            <Link
+              href="/dashboard/courses"
+              className="mt-4 inline-block text-sm font-medium text-yellow-400 hover:underline"
+            >
+              إدارة الكورسات وتفعيل كود جديد →
+            </Link>
           </div>
-        ) : null}
+        ) : (
+          <Link
+            href="/dashboard/courses"
+            className="mt-6 inline-block rounded-full border border-yellow-400/50 bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
+          >
+            اذهب للكورسات لتفعيل كود VIP
+          </Link>
+        )}
 
         {active ? (
           <>
@@ -75,10 +88,6 @@ export function AccountView() {
           </>
         ) : null}
       </motion.div>
-
-      <div className="mx-auto mb-10 w-full max-w-2xl">
-        <RedeemCodePanel />
-      </div>
     </div>
   );
 }

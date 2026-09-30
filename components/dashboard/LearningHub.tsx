@@ -9,7 +9,6 @@ import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoV
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
-import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -35,9 +34,10 @@ export function LearningHub({
   hasActiveCourse,
   panel,
   onBackToLearn: _onBackToLearn,
-  onCourseUnlocked,
+  onCourseUnlocked: _onCourseUnlocked,
 }: LearningHubProps) {
   void _onBackToLearn;
+  void _onCourseUnlocked;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-6 pt-2 sm:px-6 lg:px-8">
@@ -54,8 +54,10 @@ export function LearningHub({
             hasActiveCourse && course ? (
               <AiLearningChat course={course} />
             ) : (
-              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
-                <RedeemCodePanel onUnlocked={onCourseUnlocked} />
+              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8 text-center">
+                <p className="text-sm text-slate-400">
+                  اختار كورس مفتوح أو فعّل كود VIP من صفحة الكورسات.
+                </p>
               </div>
             )
           ) : panel === "community" ? (

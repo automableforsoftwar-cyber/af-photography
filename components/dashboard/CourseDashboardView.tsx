@@ -8,7 +8,7 @@ import {
   LearningHub,
   type DashboardPanel,
 } from "@/components/dashboard/LearningHub";
-import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
+import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { useAuthStore } from "@/lib/auth-store";
 import { getModuleById } from "@/lib/content";
 
@@ -23,7 +23,7 @@ const ALL_PANELS: DashboardPanel[] = [
 ];
 
 const pillActions: { id: DashboardPanel; label: string }[] = [
-  { id: "learn", label: "التعلم" },
+  { id: "learn", label: "الكورسات" },
   { id: "community", label: "المجتمع" },
   { id: "inbox", label: "الرسايل" },
   { id: "challenges", label: "المسابقات" },
@@ -44,7 +44,6 @@ export function CourseDashboardView() {
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const hasCourse = useAuthStore((s) => s.hasCourse);
 
-  const locked = unlockedCourseIds.length === 0;
   const paramCourse = searchParams.get("course");
   const panelParam = searchParams.get("panel");
 
@@ -53,7 +52,7 @@ export function CourseDashboardView() {
       ? paramCourse
       : activeCourseId && hasCourse(activeCourseId)
         ? activeCourseId
-        : (unlockedCourseIds[0] ?? null);
+        : null;
 
   useEffect(() => {
     if (preferred && preferred !== activeCourseId) {
@@ -70,43 +69,17 @@ export function CourseDashboardView() {
   });
 
   useEffect(() => {
-    if (locked) return;
     if (isPanel(panelParam) && panelParam !== panel) {
       setPanel(panelParam);
     }
-  }, [locked, panel, panelParam]);
+  }, [panel, panelParam]);
 
   const onSelectPanel = (id: DashboardPanel) => {
-    if (locked) return;
     setPanel(id);
     const next = new URLSearchParams(searchParams.toString());
     next.set("panel", id);
     router.replace(`/course-dashboard?${next.toString()}`);
   };
-
-  if (locked) {
-    return (
-      <AuthGate>
-        <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505]">
-          <div className="fixed inset-x-0 top-4 z-50 flex justify-end px-4 sm:px-8">
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl">
-              <AuthButton appearance="plain" />
-            </div>
-          </div>
-          <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-24 sm:px-6">
-            <RedeemCodePanel
-              onUnlocked={(courseId) => {
-                setActiveCourseId(courseId);
-                router.replace(
-                  `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
-                );
-              }}
-            />
-          </main>
-        </div>
-      </AuthGate>
-    );
-  }
 
   return (
     <AuthGate>
@@ -134,16 +107,31 @@ export function CourseDashboardView() {
           </div>
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col pt-20">
-          <LearningHub
-            course={course}
-            hasActiveCourse={hasActiveCourse}
-            panel={panel}
-            onBackToLearn={() => onSelectPanel("learn")}
-            onCourseUnlocked={(courseId) => {
-              setActiveCourseId(courseId);
-            }}
-          />
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-6 pt-20 sm:px-6 lg:px-8">
+          {panel === "learn" ? (
+            <CoursesHub
+              activeCourse={course}
+              onSelectCourse={(courseId) => {
+                if (!courseId) {
+                  setActiveCourseId(null);
+                  return;
+                }
+                if (!hasCourse(courseId)) return;
+                setActiveCourseId(courseId);
+              }}
+              onUnlocked={(courseId) => setActiveCourseId(courseId)}
+            />
+          ) : (
+            <LearningHub
+              course={course}
+              hasActiveCourse={hasActiveCourse}
+              panel={panel}
+              onBackToLearn={() => onSelectPanel("learn")}
+              onCourseUnlocked={(courseId) => {
+                setActiveCourseId(courseId);
+              }}
+            />
+          )}
         </div>
       </div>
     </AuthGate>

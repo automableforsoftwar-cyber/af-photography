@@ -1,13 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CourseStorefront } from "@/components/CourseStorefront";
 import { useAuthStore } from "@/lib/auth-store";
 import { useProgressStore } from "@/lib/progress-store";
 import { syncAuthCookies } from "@/lib/routing";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
+/**
+ * Protects dashboard (and similar) routes.
+ * Logged-out users are sent to the real homepage (`/?auth=1`) — never an interceptor storefront.
+ */
 export function AuthGate({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const unlockedCourseIds = useAuthStore((state) => state.unlockedCourseIds);
   const authHydrated = usePersistHydrated(useAuthStore.persist);
@@ -31,6 +36,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
     });
   }, [authHydrated, isLoggedIn, unlockedCourseIds]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isLoggedIn) {
+      router.replace("/?auth=1");
+    }
+  }, [hydrated, isLoggedIn, router]);
+
   if (!hydrated) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-[#050505] text-sm font-medium text-slate-400">
@@ -40,7 +52,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!isLoggedIn) {
-    return <CourseStorefront />;
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-[#050505] text-sm font-medium text-slate-400">
+        بنحوّلك للرئيسية…
+      </div>
+    );
   }
 
   return children;

@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * FATERINA MODE — public showcase only.
- * View + Vote. No Upload UI exists in this file (never mounts in the DOM).
- * No ranking / leaderboard. Chronological (newest first).
+ * Public showcase — view photos + vote counts for everyone.
+ * Casting a vote requires a fully authenticated account.
+ * Guests who click تصويت are blocked and shown Login / Sign Up.
  */
 
 import { motion } from "framer-motion";
@@ -16,6 +16,7 @@ import {
   type CommunityPost,
 } from "@/lib/community-posts";
 import { useAuthStore } from "@/lib/auth-store";
+import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -37,6 +38,7 @@ const galleryItem = {
 };
 
 export function PublicShowcaseGallery() {
+  const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const userId = useAuthStore((s) => s.userId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -44,6 +46,8 @@ export function PublicShowcaseGallery() {
   const [authOpen, setAuthOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** After guest succeeds login from Vote, retry this post once. */
+  const [pendingVoteId, setPendingVoteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,17 +60,15 @@ export function PublicShowcaseGallery() {
     void load();
   }, [load]);
 
-  const onVote = async (postId: string) => {
-    if (!isLoggedIn) {
-      setAuthOpen(true);
-      return;
-    }
+  const castVote = useCallback(async (postId: string) => {
     setBusyId(postId);
     setNotice(null);
     const result = await voteOnPost(postId);
     setBusyId(null);
+
     if (!result.ok) {
       if (result.message === "login_required") {
+        setPendingVoteId(postId);
         setAuthOpen(true);
         return;
       }
@@ -77,6 +79,7 @@ export function PublicShowcaseGallery() {
       setNotice("مقدرناش نسجّل الصوت. حاول تاني.");
       return;
     }
+
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -84,21 +87,38 @@ export function PublicShowcaseGallery() {
           : p,
       ),
     );
+  }, []);
+
+  const onVote = (postId: string) => {
+    // Block guests immediately — never hit the API without an account
+    if (!hydrated || !isLoggedIn) {
+      setPendingVoteId(postId);
+      setAuthOpen(true);
+      setNotice("لازم تسجّل دخول أو تعمل حساب عشان تصوّت.");
+      return;
+    }
+    void castVote(postId);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-      <div dir="rtl" className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1">
+      <div
+        dir="rtl"
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1"
+      >
         <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
           <p className="text-xs font-medium text-yellow-400">معرض الطلبة</p>
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             شوف شغل الطلبة — وصوّت للي عاجبك
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            معرض عام للأحدث أولاً. التصويت بعد تسجيل الدخول. الرفع للطلبة المفعّلين جوه اللوحة بس.
+            الكل يقدر يشوف الصور وعدد الأصوات. التصويت للمستخدمين المسجّلين فقط —
+            الضيوف هيتم تحويلهم لتسجيل الدخول / إنشاء حساب.
           </p>
           {notice ? (
-            <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
+            <p className="mt-3 text-sm text-yellow-400/90" role="status">
+              {notice}
+            </p>
           ) : null}
         </section>
 
@@ -134,22 +154,37 @@ export function PublicShowcaseGallery() {
                   </div>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
-                      <p className="truncate font-medium text-white">{entry.title}</p>
+                      <p className="truncate font-medium text-white">
+                        {entry.title}
+                      </p>
                       <p className="text-xs text-slate-500">
                         {entry.author_label ?? "عضو"}
+                      </p>
+                      {/* Vote count always visible (view-only for guests) */}
+                      <p className="mt-1 text-xs text-slate-400">
+                        {entry.vote_count} صوت
                       </p>
                     </div>
                     <button
                       type="button"
                       disabled={Boolean(entry.voted) || busyId === entry.id}
-                      onClick={() => void onVote(entry.id)}
+                      onClick={() => onVote(entry.id)}
+                      aria-label={
+                        isLoggedIn
+                          ? `تصويت على ${entry.title}`
+                          : "سجّل دخول عشان تصوّت"
+                      }
                       className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
                         entry.voted
                           ? "border-yellow-400 bg-yellow-400 text-[#050505]"
                           : "border-white/15 text-slate-200 hover:border-yellow-400/50 hover:text-yellow-400"
                       }`}
                     >
-                      {entry.voted ? `تم · ${entry.vote_count}` : `تصويت · ${entry.vote_count}`}
+                      {entry.voted
+                        ? "تم التصويت"
+                        : busyId === entry.id
+                          ? "…"
+                          : "تصويت"}
                     </button>
                   </div>
                 </motion.article>
@@ -161,11 +196,23 @@ export function PublicShowcaseGallery() {
 
       <EnrollmentModal
         open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        contextLabel="سجّل دخول عشان تصوّت على شغل الطلبة."
+        onClose={() => {
+          setAuthOpen(false);
+          setPendingVoteId(null);
+        }}
+        contextLabel="سجّل دخول أو اعمل حساب عشان تصوّت على شغل الطلبة."
         onSuccess={() => {
           setAuthOpen(false);
-          void load();
+          setNotice(null);
+          void load().then(() => {
+            if (pendingVoteId && useAuthStore.getState().isLoggedIn) {
+              const id = pendingVoteId;
+              setPendingVoteId(null);
+              void castVote(id);
+            }
+          });
+          // Stay on gallery after auth-from-vote (skip forced dashboard redirect)
+          return true;
         }}
       />
     </div>

@@ -4,7 +4,7 @@ import { SESSION_COOKIE } from "@/lib/routing";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Legacy alias → new dashboard tree (never to /dashboard/activate — route deleted)
+  // Legacy alias → dashboard tree
   if (pathname === "/course-dashboard" || pathname.startsWith("/course-dashboard/")) {
     const url = request.nextUrl.clone();
     const panel = url.searchParams.get("panel");
@@ -19,21 +19,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Public site (including `/`) — never intercept; real homepage for everyone
   if (!pathname.startsWith("/dashboard")) {
     return NextResponse.next();
   }
 
   const loggedIn = request.cookies.get(SESSION_COOKIE)?.value === "1";
 
-  // Unauthenticated → home (login CTA). Allow /dashboard itself so AuthGate can handle UX.
-  if (!loggedIn && pathname !== "/dashboard" && pathname !== "/dashboard/") {
+  // Any unauthenticated dashboard visit → real homepage (login CTA), no storefront
+  if (!loggedIn) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
+    url.search = "";
     url.searchParams.set("auth", "1");
     return NextResponse.redirect(url);
   }
 
-  // No activation redirects — locked users stay on whatever /dashboard page and see VIP input in-place.
   return NextResponse.next();
 }
 

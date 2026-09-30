@@ -5,20 +5,19 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
-import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
 import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
+import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
-import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 import { useAuthStore } from "@/lib/auth-store";
-import { getModuleById } from "@/lib/content";
+import { getModuleById, site } from "@/lib/content";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/dashboard", label: "الرئيسية" },
-  { href: "/dashboard/courses", label: "التعلم" },
+  { href: "/dashboard/courses", label: "الكورسات" },
   { href: "/dashboard/community", label: "المجتمع" },
   { href: "/dashboard/inbox", label: "الرسايل" },
   { href: "/dashboard/challenges", label: "المسابقات" },
@@ -47,7 +46,7 @@ export function DashboardShell({ section }: DashboardShellProps) {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const hasCourse = useAuthStore((s) => s.hasCourse);
-  const locked = unlockedCourseIds.length === 0;
+  const email = useAuthStore((s) => s.email);
 
   const paramCourse = searchParams.get("course");
   const preferred =
@@ -55,7 +54,7 @@ export function DashboardShell({ section }: DashboardShellProps) {
       ? paramCourse
       : activeCourseId && hasCourse(activeCourseId)
         ? activeCourseId
-        : (unlockedCourseIds[0] ?? null);
+        : null;
 
   useEffect(() => {
     if (preferred && preferred !== activeCourseId) {
@@ -65,30 +64,25 @@ export function DashboardShell({ section }: DashboardShellProps) {
 
   const course = preferred ? getModuleById(preferred) : null;
 
-  const onUnlocked = (courseId: string) => {
+  const selectCourse = (courseId: string) => {
+    if (!courseId) {
+      setActiveCourseId(null);
+      router.replace("/dashboard/courses");
+      return;
+    }
+    if (!hasCourse(courseId)) return;
     setActiveCourseId(courseId);
     router.replace(
       `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
     );
   };
 
-  // Locked: hide ALL sidebar/nav links — VIP code only, no redirects
-  if (locked) {
-    return (
-      <AuthGate>
-        <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505]">
-          <div className="fixed inset-x-0 top-4 z-50 flex justify-end px-4 sm:px-8">
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl">
-              <AuthButton appearance="plain" />
-            </div>
-          </div>
-          <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-24 sm:px-6">
-            <RedeemCodePanel onUnlocked={onUnlocked} />
-          </main>
-        </div>
-      </AuthGate>
+  const onUnlocked = (courseId: string) => {
+    setActiveCourseId(courseId);
+    router.replace(
+      `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
     );
-  }
+  };
 
   return (
     <AuthGate>
@@ -102,15 +96,12 @@ export function DashboardShell({ section }: DashboardShellProps) {
               const active =
                 item.href === "/dashboard"
                   ? pathname === "/dashboard"
-                  : pathname === item.href;
+                  : pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
-                  href={
-                    item.href === "/dashboard/courses" && preferred
-                      ? `${item.href}?course=${encodeURIComponent(preferred)}`
-                      : item.href
-                  }
+                  href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={`text-sm font-medium transition-colors ${
                     active
@@ -130,14 +121,46 @@ export function DashboardShell({ section }: DashboardShellProps) {
           id="main"
           className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-6 pt-20 sm:px-6 lg:px-8"
         >
-          {section === "home" || section === "courses" ? (
-            course ? (
-              <AiLearningChat course={course} />
-            ) : (
-              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
-                <RedeemCodePanel onUnlocked={onUnlocked} />
+          {section === "home" ? (
+            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-10 text-center">
+              <p className="text-sm font-medium text-yellow-400">{site.name}</p>
+              <h1 className="font-display mt-3 text-3xl font-bold text-white sm:text-4xl">
+                أهلاً{email ? `، ${email.split("@")[0]}` : ""}
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                لوحة التحكم مفتوحة بالكامل. فعّل كورساتك من صفحة «الكورسات» بكود
+                الـ VIP — كل كود بيفتح كورس واحد بس.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/dashboard/courses"
+                  className="rounded-full border border-yellow-400/50 bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
+                >
+                  الكورسات وتفعيل الكود
+                </Link>
+                <Link
+                  href="/dashboard/community"
+                  className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                >
+                  المجتمع
+                </Link>
               </div>
-            )
+              {unlockedCourseIds.length > 0 ? (
+                <p className="mt-6 text-xs text-slate-500">
+                  كورسات مفتوحة: {unlockedCourseIds.length}
+                </p>
+              ) : (
+                <p className="mt-6 text-xs text-slate-500">
+                  لسه مفيش كورس مفتوح — روح للكورسات وحط الكود.
+                </p>
+              )}
+            </div>
+          ) : section === "courses" ? (
+            <CoursesHub
+              activeCourse={course}
+              onSelectCourse={selectCourse}
+              onUnlocked={onUnlocked}
+            />
           ) : section === "community" ? (
             <CommunityView />
           ) : section === "inbox" ? (

@@ -16,7 +16,8 @@ type AuthTab = "signup" | "login";
 type EnrollmentModalProps = {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  /** Return `true` to stay on the current page (skip post-auth dashboard redirect). */
+  onSuccess?: () => boolean | void;
   /** Optional context line under the title */
   contextLabel?: string | null;
 };
@@ -87,13 +88,14 @@ export function EnrollmentModal({
       email: result.email,
     });
     await useAuthStore.getState().refreshCourses();
-    const unlocked = useAuthStore.getState().unlockedCourseIds;
-    const destination = getPostAuthPath(unlocked);
+    const destination = getPostAuthPath();
     setLoading(false);
     onClose();
-    onSuccess?.();
-    // Forced post-login routing: 0 courses → activation page immediately
-    router.replace(destination);
+    const stay = onSuccess?.() === true;
+    // Free dashboard browse after login — unless caller opts to stay (e.g. gallery vote)
+    if (!stay) {
+      router.replace(destination);
+    }
   };
 
   return (

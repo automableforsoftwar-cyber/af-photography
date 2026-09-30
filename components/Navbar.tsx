@@ -19,7 +19,6 @@ export function Navbar() {
   const [authOpen, setAuthOpen] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
 
   useEffect(() => {
     const onScroll = () => {
@@ -39,10 +38,10 @@ export function Navbar() {
 
   const goAfterAuth = () => {
     setAuthOpen(false);
-    router.push(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
+    router.push(getPostAuthPath());
   };
 
-  const dashboardHref = getPostAuthPath(unlockedCourseIds);
+  const dashboardHref = "/dashboard";
 
   return (
     <header
