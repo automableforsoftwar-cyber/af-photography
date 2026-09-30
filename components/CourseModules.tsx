@@ -66,7 +66,7 @@ export function CourseModules({ onEnroll }: CourseModulesProps) {
                 className="mt-7 w-fit"
                 onClick={() => onEnroll(module)}
               >
-                ادخل الكورس
+                نورنا في الكوميونيتي
               </PremiumButton>
             </div>
           </motion.article>

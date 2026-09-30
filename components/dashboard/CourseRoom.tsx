@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
-import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 import { getModuleById, modules } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -11,58 +10,89 @@ type CourseRoomProps = {
   courseId: string;
 };
 
+function displayName(email: string) {
+  const local = email.split("@")[0]?.trim();
+  return local || "متعلّم";
+}
+
 /**
- * In-course jail: unlocked → learning content.
- * Locked → dashboard chrome stays; content replaced by VIP code only (no lessons).
+ * Unlocked course content inside the full dashboard layout:
+ * welcome → benefits → learning chat.
  */
 export function CourseRoom({ courseId }: CourseRoomProps) {
-  const router = useRouter();
-  const hasCourse = useAuthStore((s) => s.hasCourse);
+  const email = useAuthStore((s) => s.email);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const known = modules.some((m) => m.id === courseId);
   const course = getModuleById(courseId);
-  const unlocked = hasCourse(courseId);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    setActiveCourseId(courseId);
+  }, [courseId, setActiveCourseId]);
 
   if (!known) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-16 text-center">
         <p className="text-sm text-slate-400">الكورس ده مش موجود.</p>
         <Link
-          href="/dashboard/courses"
+          href="/"
           className="mt-4 text-sm font-medium text-yellow-400 hover:underline"
         >
-          رجوع للكورسات
+          الرجوع للرئيسية
         </Link>
       </div>
     );
   }
 
-  if (!unlocked) {
+  const name = displayName(email);
+
+  if (!started) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-10">
-        <p className="mb-2 text-center text-xs font-medium text-yellow-400">
-          تفعيل الكورس
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center overflow-y-auto py-8">
+        <p className="text-sm font-medium text-yellow-400">أهلاً بيك</p>
+        <h1 className="font-display mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
+          مرحباً، {name}
+        </h1>
+        <p className="mt-4 text-lg text-slate-300">
+          أنت داخل مسار «{course.title}».
         </p>
-        <h2 className="font-display mb-2 text-center text-2xl font-bold text-white">
-          {course.title}
-        </h2>
-        <p className="mb-6 text-center text-sm text-slate-400">
-          المحتوى مقفول لحد ما تدخل كود الـ VIP الخاص بالكورس ده. مفيش دروس أو
-          تنقل جوه المسار قبل التفعيل.
-        </p>
-        <RedeemCodePanel
-          expectedCourseId={courseId}
-          onUnlocked={(id) => {
-            setActiveCourseId(id);
-            router.replace(`/dashboard/courses/${encodeURIComponent(id)}`);
-          }}
-        />
-        <Link
-          href="/dashboard/courses"
-          className="mt-6 text-center text-sm font-medium text-slate-500 transition-colors hover:text-yellow-400"
+
+        <section className="mt-10 border-t border-white/10 pt-8">
+          <h2 className="font-display text-xl font-bold text-white">عن الكورس</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-400">
+            {course.description}
+          </p>
+        </section>
+
+        <section className="mt-10 border-t border-white/10 pt-8">
+          <h2 className="font-display text-xl font-bold text-white">
+            هتتعلّم إيه — وإزاي هيفيدك
+          </h2>
+          <ul className="mt-4 space-y-3">
+            {course.outcomes.map((item) => (
+              <li
+                key={item}
+                className="flex gap-3 text-sm leading-relaxed text-slate-300"
+              >
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-yellow-400" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          {course.audience.length > 0 ? (
+            <p className="mt-6 text-sm leading-relaxed text-slate-500">
+              مناسب لـ: {course.audience.join(" · ")}
+            </p>
+          ) : null}
+        </section>
+
+        <button
+          type="button"
+          onClick={() => setStarted(true)}
+          className="mt-12 w-fit rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
         >
-          ← كل الكورسات
-        </Link>
+          ابدأ التعلم
+        </button>
       </div>
     );
   }
@@ -73,13 +103,16 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
         <p className="text-sm text-slate-400">
           تتعلّم:{" "}
           <span className="font-medium text-yellow-400">{course.title}</span>
+          <span className="mx-2 text-slate-600">·</span>
+          {name}
         </p>
-        <Link
-          href="/dashboard/courses"
+        <button
+          type="button"
+          onClick={() => setStarted(false)}
           className="text-sm font-medium text-slate-400 transition-colors hover:text-yellow-400"
         >
-          ← كل الكورسات
-        </Link>
+          المقدمة
+        </button>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         <AiLearningChat course={course} />

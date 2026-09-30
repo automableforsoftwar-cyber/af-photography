@@ -1,4 +1,4 @@
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { CourseEntryGate } from "@/components/course/CourseEntryGate";
 
 type PageProps = {
   params: Promise<{ courseId: string }>;
@@ -6,5 +6,5 @@ type PageProps = {
 
 export default async function CourseByIdPage({ params }: PageProps) {
   const { courseId } = await params;
-  return <DashboardShell section="course" courseId={courseId} />;
+  return <CourseEntryGate courseId={courseId} />;
 }

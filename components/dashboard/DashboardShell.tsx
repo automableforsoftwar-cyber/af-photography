@@ -16,7 +16,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { site } from "@/lib/content";
 
 const NAV: { href: string; label: string }[] = [
-  { href: "/dashboard", label: "الرئيسية" },
+  { href: "/", label: "الرئيسية" },
   { href: "/dashboard/courses", label: "الكورسات" },
   { href: "/dashboard/community", label: "المجتمع" },
   { href: "/dashboard/inbox", label: "الرسايل" },

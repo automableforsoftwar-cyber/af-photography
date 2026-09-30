@@ -1,10 +1,11 @@
-import { CourseSpace } from "@/components/course/CourseSpace";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ courseId: string }>;
 };
 
-export default async function CoursePage({ params }: PageProps) {
+/** Alias → dashboard course space (layout for subscribers, black screen if locked). */
+export default async function CourseAliasPage({ params }: PageProps) {
   const { courseId } = await params;
-  return <CourseSpace courseId={courseId} />;
+  redirect(`/dashboard/courses/${encodeURIComponent(courseId)}`);
 }

@@ -43,7 +43,7 @@ export function HomePage() {
         setAuthOpen(true);
         return;
       }
-      router.push(`/course/${encodeURIComponent(module.id)}`);
+      router.push(`/dashboard/courses/${encodeURIComponent(module.id)}`);
     },
     [hydrated, isLoggedIn, router],
   );
