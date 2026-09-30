@@ -3,17 +3,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AuthButton } from "@/components/AuthButton";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { navLinks, site } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
-import { getPostAuthPath } from "@/lib/routing";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 export function Navbar() {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -35,13 +31,6 @@ export function Navbar() {
       document.body.style.overflow = "";
     };
   }, [open]);
-
-  const goAfterAuth = () => {
-    setAuthOpen(false);
-    router.push(getPostAuthPath());
-  };
-
-  const dashboardHref = "/dashboard";
 
   return (
     <header
@@ -89,13 +78,12 @@ export function Navbar() {
         <div className="flex items-center gap-3 sm:gap-4">
           {hydrated && isLoggedIn ? (
             <>
-              {/* Login phase finished → Dashboard button only */}
-              <Link
-                href={dashboardHref}
+              <a
+                href="#curriculum"
                 className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
               >
-                لوحة التحكم
-              </Link>
+                الكورسات
+              </a>
               <AuthButton appearance="plain" intent="logout" />
             </>
           ) : (
@@ -163,13 +151,13 @@ export function Navbar() {
                 transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
               >
                 {isLoggedIn ? (
-                  <Link
-                    href={dashboardHref}
+                  <a
+                    href="#curriculum"
                     className="font-display text-3xl font-bold text-yellow-400"
                     onClick={() => setOpen(false)}
                   >
-                    لوحة التحكم
-                  </Link>
+                    الكورسات
+                  </a>
                 ) : (
                   <button
                     type="button"
@@ -191,8 +179,8 @@ export function Navbar() {
       <EnrollmentModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onSuccess={goAfterAuth}
-        contextLabel="سجّل بإيميلك — لو لسه مفعّلتش كورس هنودّيك لصفحة التفعيل فوراً."
+        onSuccess={() => true}
+        contextLabel="سجّل بإيميلك — بعد الدخول اختار الكورس من الصفحة الرئيسية."
       />
     </header>
   );

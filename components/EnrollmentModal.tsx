@@ -92,9 +92,13 @@ export function EnrollmentModal({
     setLoading(false);
     onClose();
     const stay = onSuccess?.() === true;
-    // Free dashboard browse after login — unless caller opts to stay (e.g. gallery vote)
-    if (!stay) {
+    // Default: stay on current page (homepage). Only redirect if onSuccess did not opt to stay
+    // and destination differs from current path.
+    if (!stay && destination && destination !== "/") {
       router.replace(destination);
+    }
+    if (!stay && destination === "/") {
+      // Already home-oriented — no portal redirect
     }
   };
 

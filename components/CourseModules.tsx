@@ -65,9 +65,8 @@ export function CourseModules({ onEnroll }: CourseModulesProps) {
               <PremiumButton
                 className="mt-7 w-fit"
                 onClick={() => onEnroll(module)}
-                aria-haspopup="dialog"
               >
-                نورنا في الكوميونيتي
+                ادخل الكورس
               </PremiumButton>
             </div>
           </motion.article>

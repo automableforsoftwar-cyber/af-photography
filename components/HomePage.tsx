@@ -16,7 +16,6 @@ import { Navbar } from "@/components/Navbar";
 import { PublicShowcaseGallery } from "@/components/community/PublicShowcaseGallery";
 import { useAuthStore } from "@/lib/auth-store";
 import type { CourseModule } from "@/lib/content";
-import { getPostAuthPath } from "@/lib/routing";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 export function HomePage() {
@@ -24,8 +23,6 @@ export function HomePage() {
   const searchParams = useSearchParams();
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const hasCourse = useAuthStore((state) => state.hasCourse);
-  const setActiveCourseId = useAuthStore((state) => state.setActiveCourseId);
   const [authOpen, setAuthOpen] = useState(false);
   const [authContext, setAuthContext] = useState<string | null>(null);
 
@@ -36,41 +33,19 @@ export function HomePage() {
     }
   }, [searchParams]);
 
-  const goAfterAuth = useCallback(() => {
-    router.replace(getPostAuthPath(useAuthStore.getState().unlockedCourseIds));
-  }, [router]);
-
-  const goDashboard = useCallback(
-    (courseId?: string) => {
-      if (courseId) {
-        setActiveCourseId(courseId);
-        router.push(
-          `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
-        );
-        return;
-      }
-      goAfterAuth();
-    },
-    [router, setActiveCourseId, goAfterAuth],
-  );
-
   const handleEnroll = useCallback(
     (module: CourseModule) => {
       if (!hydrated) return;
-      if (isLoggedIn && hasCourse(module.id)) {
-        goDashboard(module.id);
+      if (!isLoggedIn) {
+        setAuthContext(
+          `سجّل دخول أو اعمل حساب عشان تدخل «${module.title}». بعد الدخول اختار الكورس تاني من قسم الكورسات.`,
+        );
+        setAuthOpen(true);
         return;
       }
-      if (isLoggedIn) {
-        router.push("/dashboard");
-        return;
-      }
-      setAuthContext(
-        `اعمل حساب عشان تتابع «${module.title}». فتح الكورس بيحصل بكود الاشتراك من صفحة التفعيل.`,
-      );
-      setAuthOpen(true);
+      router.push(`/course/${encodeURIComponent(module.id)}`);
     },
-    [hydrated, isLoggedIn, hasCourse, goDashboard, router],
+    [hydrated, isLoggedIn, router],
   );
 
   return (
@@ -95,9 +70,14 @@ export function HomePage() {
       <Footer />
       <EnrollmentModal
         open={authOpen}
-        onClose={() => setAuthOpen(false)}
+        onClose={() => {
+          setAuthOpen(false);
+        }}
         contextLabel={authContext}
-        onSuccess={goAfterAuth}
+        onSuccess={() => {
+          // Stay on public homepage after login — no dashboard redirect
+          return true;
+        }}
       />
     </>
   );

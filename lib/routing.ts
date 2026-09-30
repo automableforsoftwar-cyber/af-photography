@@ -11,10 +11,10 @@ export const DASHBOARD_PROTECTED_PREFIXES = [
   "/dashboard/account",
 ] as const;
 
-/** Post-auth destination — always free browse on main dashboard (no activation jail). */
+/** After login — stay on the public homepage (no dashboard portal). */
 export function getPostAuthPath(_unlockedCourseIds?: string[]): string {
   void _unlockedCourseIds;
-  return "/dashboard";
+  return "/";
 }
 
 export function syncAuthCookies(input: {
