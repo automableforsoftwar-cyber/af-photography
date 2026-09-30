@@ -1,49 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
-import { modules, getModuleById, type CourseModule } from "@/lib/content";
+import { modules, getModuleById } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 type CoursesHubProps = {
-  activeCourse: CourseModule | null;
-  onSelectCourse: (courseId: string) => void;
-  onUnlocked: (courseId: string) => void;
+  onUnlocked?: (courseId: string) => void;
 };
 
-export function CoursesHub({
-  activeCourse,
-  onSelectCourse,
-  onUnlocked,
-}: CoursesHubProps) {
+/** Catalog + VIP on /dashboard/courses — enter a course via /dashboard/courses/[courseId]. */
+export function CoursesHub({ onUnlocked }: CoursesHubProps) {
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
-  const hasCourse = useAuthStore((s) => s.hasCourse);
-
-  if (activeCourse && hasCourse(activeCourse.id)) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-400">
-            تتعلّم:{" "}
-            <span className="font-medium text-yellow-400">{activeCourse.title}</span>
-          </p>
-          <button
-            type="button"
-            onClick={() => onSelectCourse("")}
-            className="text-sm font-medium text-slate-400 transition-colors hover:text-yellow-400"
-          >
-            ← كل الكورسات
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <AiLearningChat course={activeCourse} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto pb-8">
@@ -58,8 +30,8 @@ export function CoursesHub({
           مساراتك
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-400">
-          حساب واحد يقدر يفتح أكتر من كورس. كل كود VIP بيفتح كورس واحد فقط حسب
-          الـ target_course المرتبط بيه.
+          ادخل أي كورس. لو مش مفتوح عندك، هتظهر شاشة تفعيل كود الـ VIP جوه صفحة
+          الكورس — كل كود بيفتح كورس واحد فقط.
         </p>
       </motion.div>
 
@@ -95,19 +67,16 @@ export function CoursesHub({
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-400">
                   {course.description}
                 </p>
-                {unlocked ? (
-                  <button
-                    type="button"
-                    onClick={() => onSelectCourse(course.id)}
-                    className="mt-4 rounded-full border border-yellow-400/40 bg-yellow-400 px-4 py-2 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
-                  >
-                    ابدأ التعلم
-                  </button>
-                ) : (
-                  <p className="mt-4 text-xs text-slate-500">
-                    محتاج كود VIP خاص بالكورس ده.
-                  </p>
-                )}
+                <Link
+                  href={`/dashboard/courses/${encodeURIComponent(course.id)}`}
+                  className={`mt-4 inline-flex items-center justify-center rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                    unlocked
+                      ? "border-yellow-400/40 bg-yellow-400 text-[#050505] hover:bg-yellow-300"
+                      : "border-white/20 bg-white/5 text-slate-200 hover:border-yellow-400/40 hover:text-yellow-400"
+                  }`}
+                >
+                  {unlocked ? "ابدأ التعلم" : "ادخل — فعّل الكود"}
+                </Link>
               </article>
             </motion.li>
           );
@@ -117,9 +86,7 @@ export function CoursesHub({
       {unlockedCourseIds.length > 0 ? (
         <p className="mx-auto max-w-3xl text-center text-xs text-slate-500">
           مفتوح عندك:{" "}
-          {unlockedCourseIds
-            .map((id) => getModuleById(id).title)
-            .join(" · ")}
+          {unlockedCourseIds.map((id) => getModuleById(id).title).join(" · ")}
         </p>
       ) : null}
     </div>

@@ -96,7 +96,7 @@ export function Navbar() {
               >
                 لوحة التحكم
               </Link>
-              <AuthButton appearance="plain" />
+              <AuthButton appearance="plain" intent="logout" />
             </>
           ) : (
             <button

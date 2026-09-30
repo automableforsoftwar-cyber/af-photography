@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
 import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
+import { CourseRoom } from "@/components/dashboard/CourseRoom";
 import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
 import { useAuthStore } from "@/lib/auth-store";
-import { getModuleById, site } from "@/lib/content";
+import { site } from "@/lib/content";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/dashboard", label: "الرئيسية" },
@@ -30,58 +30,26 @@ type DashboardShellProps = {
   section:
     | "home"
     | "courses"
+    | "course"
     | "community"
     | "inbox"
     | "challenges"
     | "gallery"
     | "resources"
     | "account";
+  courseId?: string;
 };
 
-export function DashboardShell({ section }: DashboardShellProps) {
+export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
-  const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
-  const hasCourse = useAuthStore((s) => s.hasCourse);
   const email = useAuthStore((s) => s.email);
 
-  const paramCourse = searchParams.get("course");
-  const preferred =
-    paramCourse && hasCourse(paramCourse)
-      ? paramCourse
-      : activeCourseId && hasCourse(activeCourseId)
-        ? activeCourseId
-        : null;
-
-  useEffect(() => {
-    if (preferred && preferred !== activeCourseId) {
-      setActiveCourseId(preferred);
-    }
-  }, [preferred, activeCourseId, setActiveCourseId]);
-
-  const course = preferred ? getModuleById(preferred) : null;
-
-  const selectCourse = (courseId: string) => {
-    if (!courseId) {
-      setActiveCourseId(null);
-      router.replace("/dashboard/courses");
-      return;
-    }
-    if (!hasCourse(courseId)) return;
-    setActiveCourseId(courseId);
-    router.replace(
-      `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
-    );
-  };
-
-  const onUnlocked = (courseId: string) => {
-    setActiveCourseId(courseId);
-    router.replace(
-      `/dashboard/courses?course=${encodeURIComponent(courseId)}`,
-    );
+  const onUnlocked = (id: string) => {
+    setActiveCourseId(id);
+    router.replace(`/dashboard/courses/${encodeURIComponent(id)}`);
   };
 
   return (
@@ -113,7 +81,8 @@ export function DashboardShell({ section }: DashboardShellProps) {
                 </Link>
               );
             })}
-            <AuthButton appearance="plain" />
+            {/* Exit Course → homepage, stay logged in (no signOut) */}
+            <AuthButton appearance="plain" intent="exit-home" />
           </div>
         </nav>
 
@@ -128,8 +97,8 @@ export function DashboardShell({ section }: DashboardShellProps) {
                 أهلاً{email ? `، ${email.split("@")[0]}` : ""}
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                لوحة التحكم مفتوحة بالكامل. فعّل كورساتك من صفحة «الكورسات» بكود
-                الـ VIP — كل كود بيفتح كورس واحد بس.
+                لوحة التحكم مفتوحة. ادخل كورس من «الكورسات» — لو مش مفعّل هتظهر
+                شاشة كود الـ VIP جوه صفحة الكورس.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link
@@ -151,16 +120,14 @@ export function DashboardShell({ section }: DashboardShellProps) {
                 </p>
               ) : (
                 <p className="mt-6 text-xs text-slate-500">
-                  لسه مفيش كورس مفتوح — روح للكورسات وحط الكود.
+                  لسه مفيش كورس مفتوح — روح للكورسات وادخل كورس عشان تفعّل.
                 </p>
               )}
             </div>
           ) : section === "courses" ? (
-            <CoursesHub
-              activeCourse={course}
-              onSelectCourse={selectCourse}
-              onUnlocked={onUnlocked}
-            />
+            <CoursesHub onUnlocked={onUnlocked} />
+          ) : section === "course" && courseId ? (
+            <CourseRoom courseId={courseId} />
           ) : section === "community" ? (
             <CommunityView />
           ) : section === "inbox" ? (

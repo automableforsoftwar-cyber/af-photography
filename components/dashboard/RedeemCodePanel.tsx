@@ -12,11 +12,14 @@ const ease = [0.22, 1, 0.36, 1] as const;
 type RedeemCodePanelProps = {
   onUnlocked?: (courseId: string) => void;
   compact?: boolean;
+  /** When set, only a code whose target_course matches unlocks this view. */
+  expectedCourseId?: string | null;
 };
 
 export function RedeemCodePanel({
   onUnlocked,
   compact = false,
+  expectedCourseId = null,
 }: RedeemCodePanelProps) {
   const addUnlockedCourse = useAuthStore((s) => s.addUnlockedCourse);
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
@@ -24,6 +27,8 @@ export function RedeemCodePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const expected = expectedCourseId ? getModuleById(expectedCourseId) : null;
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -41,8 +46,18 @@ export function RedeemCodePanel({
 
     // Strict mapping: unlock ONLY result.courseId (from access_codes.target_course)
     addUnlockedCourse(result.courseId);
-    const course = getModuleById(result.courseId);
-    setSuccess(`تم فتح «${course.title}» فقط — باقي الكورسات لسه مقفولة.`);
+    const unlocked = getModuleById(result.courseId);
+
+    if (expectedCourseId && result.courseId !== expectedCourseId) {
+      setSuccess(
+        `الكود فتح «${unlocked.title}» — مش الكورس ده. حط كود VIP الخاص بـ «${expected?.title ?? expectedCourseId}».`,
+      );
+      setCode("");
+      setLoading(false);
+      return;
+    }
+
+    setSuccess(`تم فتح «${unlocked.title}» فقط — باقي الكورسات لسه مقفولة.`);
     setCode("");
     setLoading(false);
     onUnlocked?.(result.courseId);
@@ -66,8 +81,9 @@ export function RedeemCodePanel({
         Enter Course VIP Code
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        كل كود مربوط بكورس واحد (`target_course`). التفعيل بيفتح الكورس ده بس على
-        حسابك — وتقدر تضيف كورسات تانية بكودات منفصلة لاحقاً.
+        {expected
+          ? `عشان تفتح «${expected.title}» لازم كود VIP مربوط بنفس الكورس (target_course). كود كورس تاني مش هيفتح المحتوى هنا.`
+          : "كل كود مربوط بكورس واحد (target_course). التفعيل بيفتح الكورس ده بس على حسابك — وتقدر تضيف كورسات تانية بكودات منفصلة لاحقاً."}
       </p>
 
       {unlockedCourseIds.length > 0 ? (

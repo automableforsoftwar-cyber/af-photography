@@ -103,22 +103,13 @@ export function CourseDashboardView() {
                 {item.label}
               </button>
             ))}
-            <AuthButton appearance="plain" />
+            <AuthButton appearance="plain" intent="exit-home" />
           </div>
         </nav>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-6 pt-20 sm:px-6 lg:px-8">
           {panel === "learn" ? (
             <CoursesHub
-              activeCourse={course}
-              onSelectCourse={(courseId) => {
-                if (!courseId) {
-                  setActiveCourseId(null);
-                  return;
-                }
-                if (!hasCourse(courseId)) return;
-                setActiveCourseId(courseId);
-              }}
               onUnlocked={(courseId) => setActiveCourseId(courseId)}
             />
           ) : (
