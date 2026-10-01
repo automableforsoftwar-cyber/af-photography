@@ -1,4 +1,5 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
+import { toCommunityImagePublicUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 
 /** emoji → list of user ids who reacted */
@@ -96,6 +97,7 @@ export async function fetchCourseMessages(input: {
 
   const rows = ((data ?? []) as CourseChatMessage[]).map((m) => ({
     ...m,
+    image_url: m.image_url ? toCommunityImagePublicUrl(m.image_url) : null,
     reply_to_id: m.reply_to_id ?? null,
     reactions: normalizeReactions(m.reactions),
   }));
@@ -159,7 +161,9 @@ export async function sendCourseMessage(input: {
       user_id: user.id,
       author_label: authorLabel,
       body,
-      image_url: input.imageUrl?.trim() || null,
+      image_url: input.imageUrl?.trim()
+        ? toCommunityImagePublicUrl(input.imageUrl.trim())
+        : null,
       reply_to_id: input.replyToId || null,
       reactions: {},
     })

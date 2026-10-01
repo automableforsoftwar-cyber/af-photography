@@ -1,4 +1,5 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
+import { toCommunityImagePublicUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -55,7 +56,7 @@ export async function fetchPeerThread(
 
   return ((data ?? []) as PeerDirectMessage[]).map((m) => ({
     ...m,
-    image_url: m.image_url ?? null,
+    image_url: m.image_url ? toCommunityImagePublicUrl(m.image_url) : null,
     is_read: Boolean(m.is_read),
   }));
 }
@@ -203,7 +204,9 @@ export async function sendPeerMessage(input: {
   }
 
   const content = (input.content ?? "").trim();
-  const imageUrl = input.imageUrl?.trim() || null;
+  const imageUrl = input.imageUrl?.trim()
+    ? toCommunityImagePublicUrl(input.imageUrl.trim())
+    : null;
   if (!content && !imageUrl) {
     return { ok: false, message: "empty" };
   }
@@ -234,7 +237,9 @@ export async function sendPeerMessage(input: {
     ok: true,
     message: {
       ...message,
-      image_url: message.image_url ?? null,
+      image_url: message.image_url
+        ? toCommunityImagePublicUrl(message.image_url)
+        : null,
       is_read: Boolean(message.is_read),
     },
   };
@@ -263,7 +268,9 @@ export function subscribeIncomingPeerMessages(input: {
         if (!row?.id) return;
         input.onInsert({
           ...row,
-          image_url: row.image_url ?? null,
+          image_url: row.image_url
+            ? toCommunityImagePublicUrl(row.image_url)
+            : null,
           is_read: Boolean(row.is_read),
         });
       },

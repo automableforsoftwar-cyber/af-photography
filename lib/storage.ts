@@ -3,8 +3,26 @@ import { supabase } from "@/lib/supabase";
 const BUCKET = "community_images";
 
 /**
+ * Always return an absolute public Storage URL (never a bare path).
+ */
+export function toCommunityImagePublicUrl(pathOrUrl: string): string {
+  const raw = pathOrUrl.trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  // Strip accidental bucket prefix
+  const path = raw
+    .replace(/^\/+/, "")
+    .replace(/^community_images\//, "");
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
  * Upload an image file to the public `community_images` bucket.
  * Path: `{userId}/{timestamp}-{safeName}`
+ * Returns the full public URL from getPublicUrl().
  */
 export async function uploadCommunityImage(
   file: File,
@@ -38,9 +56,10 @@ export async function uploadCommunityImage(
   }
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  if (!data?.publicUrl) {
+  const publicUrl = data?.publicUrl?.trim() || "";
+  if (!publicUrl || !/^https?:\/\//i.test(publicUrl)) {
     return { ok: false, message: "url_failed" };
   }
 
-  return { ok: true, publicUrl: data.publicUrl };
+  return { ok: true, publicUrl };
 }

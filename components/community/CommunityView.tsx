@@ -93,8 +93,13 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   );
   const pickerRef = useRef<HTMLDivElement>(null);
   const reactPickerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeChatUserRef = useRef(activeChatUser);
   activeChatUserRef.current = activeChatUser;
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
@@ -609,6 +614,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                       );
                     })}
                   </AnimatePresence>
+                  <div ref={messagesEndRef} />
                 </motion.div>
               )}
             </RtlScroll>

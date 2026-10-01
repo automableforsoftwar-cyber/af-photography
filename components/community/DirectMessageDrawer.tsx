@@ -49,7 +49,7 @@ export function DirectMessageDrawer({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
   const loadedPeerRef = useRef<string | null>(null);
   const onOpenedPeerRef = useRef(onOpenedPeer);
@@ -126,9 +126,8 @@ export function DirectMessageDrawer({
   }, []);
 
   useEffect(() => {
-    if (loading) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, loading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Realtime append only
   useEffect(() => {
@@ -292,7 +291,7 @@ export function DirectMessageDrawer({
                       </li>
                     );
                   })}
-                  <div ref={bottomRef} />
+                  <div ref={messagesEndRef} />
                 </ul>
               )}
             </RtlScroll>
