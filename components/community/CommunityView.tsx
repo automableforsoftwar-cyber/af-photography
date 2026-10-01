@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -524,13 +523,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                 }
                                 className="relative mt-3 ms-auto block aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
                               >
-                                <Image
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
                                   src={message.image_url}
                                   alt=""
-                                  fill
-                                  sizes="320px"
-                                  className="object-cover"
-                                  unoptimized
+                                  className="h-full w-full object-cover"
                                 />
                               </button>
                             ) : null}

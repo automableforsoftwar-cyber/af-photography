@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -145,21 +144,18 @@ export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
           ) : null}
 
           <motion.div
-            className="relative h-[min(90svh,900px)] w-full max-w-5xl"
+            className="relative flex h-[min(90svh,900px)] w-full max-w-5xl items-center justify-center"
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.98, opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={src}
               alt={alt}
-              fill
-              className="object-contain"
-              sizes="100vw"
-              unoptimized
-              priority
+              className="max-h-full max-w-full object-contain"
             />
           </motion.div>
         </motion.div>

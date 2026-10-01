@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
@@ -107,12 +106,11 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
                       onClick={() => setLightboxSrc(m.image_url)}
                       className="relative mt-3 ms-auto block aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-white/10"
                     >
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={m.image_url}
                         alt=""
-                        fill
-                        className="object-cover"
-                        unoptimized
+                        className="h-full w-full object-cover"
                       />
                     </button>
                   ) : null}

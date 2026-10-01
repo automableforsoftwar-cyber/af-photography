@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -276,13 +275,11 @@ export function DirectMessageDrawer({
                               className="relative mt-2 block w-full max-w-[15rem] overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
                             >
                               <span className="relative block aspect-[4/3] w-full">
-                                <Image
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
                                   src={m.image_url}
                                   alt=""
-                                  fill
-                                  className="object-cover"
-                                  sizes="240px"
-                                  unoptimized
+                                  className="h-full w-full object-cover"
                                 />
                               </span>
                             </button>

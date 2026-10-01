@@ -5,7 +5,6 @@
  */
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -201,20 +200,18 @@ export function CompetitionPhotoVoting() {
                   whileHover={{ scale: 1.02 }}
                   className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setLightboxSrc(entry.image_url)}
-                    className="relative aspect-[4/3] w-full overflow-hidden text-start"
-                  >
-                    <Image
-                      src={entry.image_url}
-                      alt={entry.description || entry.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 40vw"
-                      className="object-cover transition hover:scale-[1.02]"
-                      unoptimized
-                    />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setLightboxSrc(entry.image_url)}
+                      className="relative aspect-[4/3] w-full overflow-hidden text-start"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={entry.image_url}
+                        alt={entry.description || entry.title}
+                        className="h-full w-full object-cover transition hover:scale-[1.02]"
+                      />
+                    </button>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
                       <p className="truncate font-medium text-white">
