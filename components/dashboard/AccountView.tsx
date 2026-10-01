@@ -9,11 +9,14 @@ import { useAuthStore } from "@/lib/auth-store";
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export function AccountView() {
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const active = activeCourseId ? getModuleById(activeCourseId) : null;
+  const headline =
+    fullName.trim() || email || "عضو AF P";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
@@ -25,8 +28,13 @@ export function AccountView() {
       >
         <p className="text-sm font-medium text-yellow-400">حسابك</p>
         <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
-          {email || "عضو AF P"}
+          {headline}
         </h2>
+        {fullName.trim() && email ? (
+          <p className="mt-2 text-sm text-slate-400" dir="ltr">
+            {email}
+          </p>
+        ) : null}
         <div className="my-4 border-b border-white/10" />
         <p className="text-slate-300 leading-relaxed">
           حسابك مستقل عن الكورسات. تفعيل الأكواد من صفحة «الكورسات» — وتقدر تجمع

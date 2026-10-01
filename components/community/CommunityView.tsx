@@ -46,6 +46,7 @@ type CommunityViewProps = {
 
 export function CommunityView({ courseId }: CommunityViewProps) {
   const userId = useAuthStore((s) => s.userId);
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const [tab, setTab] = useState<TabId>("general");
   const [draft, setDraft] = useState("");
@@ -54,6 +55,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const authorName =
+    fullName.trim() || email.split("@")[0]?.trim() || "عضو";
 
   const channelId = tab === "photos" ? "photos" : "general";
   const activeChannel =
@@ -95,7 +99,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       courseId,
       channelId,
       body: draft.trim() || "صورة",
-      authorLabel: email.split("@")[0] || "عضو",
+      authorLabel: authorName,
       imageUrl: isPhotos || imageUrl ? imageUrl : null,
     });
     setSending(false);

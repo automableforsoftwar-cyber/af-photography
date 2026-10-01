@@ -21,15 +21,22 @@ function pushCookies(state: {
   });
 }
 
+function metaFullName(user: User): string {
+  const raw = user.user_metadata?.full_name;
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
 type AuthState = {
   isLoggedIn: boolean;
   userId: string | null;
   email: string;
+  fullName: string;
   unlockedCourseIds: string[];
   activeCourseId: string | null;
   login: (payload: {
     userId: string;
     email: string;
+    fullName?: string;
     unlockedCourseIds?: string[];
     activeCourseId?: string | null;
   }) => void;
@@ -47,13 +54,15 @@ export const useAuthStore = create<AuthState>()(
       isLoggedIn: false,
       userId: null,
       email: "",
+      fullName: "",
       unlockedCourseIds: [],
       activeCourseId: null,
-      login: ({ userId, email, unlockedCourseIds, activeCourseId }) => {
+      login: ({ userId, email, fullName, unlockedCourseIds, activeCourseId }) => {
         const next = {
           isLoggedIn: true as const,
           userId,
           email: email.trim().toLowerCase(),
+          fullName: (fullName ?? get().fullName).trim(),
           unlockedCourseIds: unlockedCourseIds ?? get().unlockedCourseIds,
           activeCourseId:
             activeCourseId !== undefined
@@ -84,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
             isLoggedIn: false as const,
             userId: null,
             email: "",
+            fullName: "",
             unlockedCourseIds: [] as string[],
             activeCourseId: null,
           };
@@ -95,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
         const user = session.user as User;
         const { data: profile } = await supabase
           .from("profiles")
-          .select("email")
+          .select("email, full_name")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -106,10 +116,16 @@ export const useAuthStore = create<AuthState>()(
             ? prevActive
             : (unlocked[0] ?? null);
 
+        const fullName =
+          (profile?.full_name as string | null)?.trim() ||
+          metaFullName(user) ||
+          get().fullName;
+
         const next = {
           isLoggedIn: true as const,
           userId: user.id,
           email: profile?.email ?? user.email ?? get().email,
+          fullName,
           unlockedCourseIds: unlocked,
           activeCourseId,
         };
@@ -141,6 +157,7 @@ export const useAuthStore = create<AuthState>()(
           isLoggedIn: false as const,
           userId: null,
           email: "",
+          fullName: "",
           unlockedCourseIds: [] as string[],
           activeCourseId: null,
         };
@@ -149,12 +166,13 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "af-academy-auth-v4",
+      name: "af-academy-auth-v5",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,
         userId: state.userId,
         email: state.email,
+        fullName: state.fullName,
         unlockedCourseIds: state.unlockedCourseIds,
         activeCourseId: state.activeCourseId,
       }),

@@ -31,6 +31,7 @@ export function EnrollmentModal({
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const [tab, setTab] = useState<AuthTab>("signup");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,7 @@ export function EnrollmentModal({
   useEffect(() => {
     if (!open) {
       setTab("signup");
+      setFullName("");
       setEmail("");
       setPassword("");
       setError(null);
@@ -63,7 +65,11 @@ export function EnrollmentModal({
     }
   }, [open]);
 
-  const canSubmit = Boolean(email.trim() && password.length >= 6);
+  const canSubmit = Boolean(
+    email.trim() &&
+      password.length >= 6 &&
+      (tab === "login" || fullName.trim()),
+  );
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -74,7 +80,7 @@ export function EnrollmentModal({
 
     const result =
       tab === "signup"
-        ? await signUpWithEmail({ email, password })
+        ? await signUpWithEmail({ email, password, fullName })
         : await signInWithEmail({ email, password });
 
     if (!result.ok) {
@@ -86,6 +92,7 @@ export function EnrollmentModal({
     login({
       userId: result.userId,
       email: result.email,
+      fullName: result.fullName,
     });
     await useAuthStore.getState().refreshCourses();
     const destination = getPostAuthPath();
@@ -185,6 +192,27 @@ export function EnrollmentModal({
               </div>
 
               <form onSubmit={onSubmit} className="mt-6 space-y-4">
+                {tab === "signup" ? (
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-slate-500">
+                      الاسم بالكامل
+                    </span>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        setError(null);
+                      }}
+                      required
+                      disabled={loading}
+                      autoComplete="name"
+                      className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
+                      placeholder="مثال: أحمد خالد"
+                    />
+                  </label>
+                ) : null}
+
                 <label className="block space-y-1.5">
                   <span className="text-xs font-medium text-slate-500">
                     الإيميل

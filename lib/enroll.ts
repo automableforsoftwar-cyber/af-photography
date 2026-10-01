@@ -18,7 +18,7 @@ type AccessCodeRow = {
 };
 
 export type AuthResult =
-  | { ok: true; userId: string; email: string }
+  | { ok: true; userId: string; email: string; fullName: string }
   | { ok: false; message: string };
 
 export type RedeemResult =
@@ -45,9 +45,15 @@ function isActiveExpiry(expiresAt: string | null | undefined): boolean {
 export async function signUpWithEmail(input: {
   email: string;
   password: string;
+  fullName: string;
 }): Promise<AuthResult> {
   const email = input.email.trim().toLowerCase();
   const password = input.password;
+  const fullName = input.fullName.trim();
+
+  if (!fullName) {
+    return { ok: false, message: "اكتب الاسم بالكامل." };
+  }
 
   if (!email || password.length < 6) {
     return {
@@ -62,7 +68,7 @@ export async function signUpWithEmail(input: {
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { email } },
+    options: { data: { full_name: fullName, email } },
   });
 
   if (signUpError) {
@@ -98,22 +104,26 @@ export async function signUpWithEmail(input: {
     return { ok: false, message: "حصل خطأ أثناء إنشاء الحساب. حاول تاني." };
   }
 
-  const { error: insertError } = await supabase.from("profiles").insert({
-    id: userId,
-    email,
-    phone_number: null,
-    used_code: null,
-  });
+  const { error: upsertError } = await supabase.from("profiles").upsert(
+    {
+      id: userId,
+      email,
+      full_name: fullName,
+      phone_number: null,
+      used_code: null,
+    },
+    { onConflict: "id" },
+  );
 
-  if (insertError && insertError.code !== "23505") {
-    console.error("profiles insert:", insertError);
+  if (upsertError) {
+    console.error("profiles upsert:", upsertError);
     return {
       ok: false,
       message: "حصل خطأ أثناء إنشاء الملف الشخصي. حاول تاني.",
     };
   }
 
-  return { ok: true, userId, email };
+  return { ok: true, userId, email, fullName };
 }
 
 /** Log in with real email + password. */
@@ -138,12 +148,29 @@ export async function signInWithEmail(input: {
     return { ok: false, message: LOGIN_INVALID_MSG };
   }
 
+  const metaName =
+    typeof data.user.user_metadata?.full_name === "string"
+      ? data.user.user_metadata.full_name.trim()
+      : "";
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  const fullName = (profile?.full_name as string | null)?.trim() || metaName;
+
   await supabase.from("profiles").upsert(
-    { id: data.user.id, email },
+    {
+      id: data.user.id,
+      email,
+      ...(fullName ? { full_name: fullName } : {}),
+    },
     { onConflict: "id" },
   );
 
-  return { ok: true, userId: data.user.id, email };
+  return { ok: true, userId: data.user.id, email, fullName };
 }
 
 /**

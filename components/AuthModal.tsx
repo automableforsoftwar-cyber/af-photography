@@ -120,7 +120,7 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
                 {mode === "register" ? (
                   <Field
                     id="auth-name"
-                    label="الاسم الكامل"
+                    label="الاسم بالكامل"
                     type="text"
                     autoComplete="name"
                     placeholder="مثال: أحمد خالد"

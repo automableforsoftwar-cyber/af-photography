@@ -40,7 +40,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
+  const welcomeName =
+    fullName.trim() || email.split("@")[0]?.trim() || "";
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
@@ -89,7 +92,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-10 text-center">
               <p className="text-sm font-medium text-yellow-400">{site.name}</p>
               <h1 className="font-display mt-3 text-3xl font-bold text-white sm:text-4xl">
-                أهلاً{email ? `، ${email.split("@")[0]}` : ""}
+                أهلاً{welcomeName ? `، ${welcomeName}` : ""}
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-slate-400">
                 لوحة التحكم مفتوحة. ادخل كورس من «الكورسات» — لو مش مفعّل هتظهر

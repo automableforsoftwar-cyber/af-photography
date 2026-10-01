@@ -10,16 +10,12 @@ type CourseRoomProps = {
   courseId: string;
 };
 
-function displayName(email: string) {
-  const local = email.split("@")[0]?.trim();
-  return local || "متعلّم";
-}
-
 /**
  * Unlocked course content inside the full dashboard layout:
  * welcome → benefits → learning chat.
  */
 export function CourseRoom({ courseId }: CourseRoomProps) {
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const known = modules.some((m) => m.id === courseId);
@@ -44,7 +40,8 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
     );
   }
 
-  const name = displayName(email);
+  const name =
+    fullName.trim() || email.split("@")[0]?.trim() || "متعلّم";
 
   if (!started) {
     return (

@@ -38,21 +38,19 @@ const galleryItem = {
 
 export function CompetitionPhotoVoting() {
   const userId = useAuthStore((s) => s.userId);
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fromEmail = email.split("@")[0] || "";
-    setUserName((prev) => prev || fromEmail);
-  }, [email]);
+  const displayName =
+    fullName.trim() || email.split("@")[0]?.trim() || "عضو";
 
   const load = useCallback(async () => {
     if (!activeCourseId) {
@@ -105,8 +103,8 @@ export function CompetitionPhotoVoting() {
       setNotice("لازم تفتح كورس مفعّل الأول.");
       return;
     }
-    if (!file || !userName.trim() || !description.trim()) {
-      setNotice("الاسم ووصف الصورة والصورة من جهازك مطلوبين.");
+    if (!file || !description.trim()) {
+      setNotice("وصف الصورة والصورة من جهازك مطلوبين.");
       return;
     }
     setUploadBusy(true);
@@ -119,7 +117,7 @@ export function CompetitionPhotoVoting() {
     }
     const result = await uploadCommunityPost({
       description,
-      userName,
+      userName: displayName,
       imageUrl: up.publicUrl,
       courseId: activeCourseId,
     });
@@ -146,17 +144,11 @@ export function CompetitionPhotoVoting() {
             شارك فريمك… أو صوّت للأحسن
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            ارفع من جهازك مع الاسم ووصف الصورة. صوت واحد لكل صورة لكل مستخدم.
+            ارفع من جهازك مع وصف الصورة. هتنشر باسمك ({displayName}). صوت واحد
+            لكل صورة لكل مستخدم.
           </p>
 
           <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
-            <input
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="اسمك"
-              required
-              className="w-full rounded-full border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
-            />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -176,12 +168,7 @@ export function CompetitionPhotoVoting() {
               />
             </label>
             <PremiumButton
-              disabled={
-                uploadBusy ||
-                !file ||
-                !userName.trim() ||
-                !description.trim()
-              }
+              disabled={uploadBusy || !file || !description.trim()}
               onClick={() => void onUpload()}
             >
               {uploadBusy ? "جاري الرفع…" : "انشر"}

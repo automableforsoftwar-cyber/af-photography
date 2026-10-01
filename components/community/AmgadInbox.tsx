@@ -16,6 +16,7 @@ type AmgadInboxProps = {
 };
 
 export function AmgadInbox({ courseId }: AmgadInboxProps) {
+  const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -23,6 +24,9 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const senderName =
+    fullName.trim() || email.split("@")[0]?.trim() || "طالب";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,7 +59,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
     const result = await sendDirectMessage({
       courseId,
       body: draft,
-      senderName: email.split("@")[0] || "طالب",
+      senderName,
       imageUrl,
     });
     setSending(false);
