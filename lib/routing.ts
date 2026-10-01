@@ -4,7 +4,6 @@ export const SESSION_COOKIE = "afp_logged_in";
 export const DASHBOARD_PROTECTED_PREFIXES = [
   "/dashboard/courses",
   "/dashboard/community",
-  "/dashboard/inbox",
   "/dashboard/challenges",
   "/dashboard/gallery",
   "/dashboard/account",

@@ -15,7 +15,6 @@ import { getModuleById } from "@/lib/content";
 const ALL_PANELS: DashboardPanel[] = [
   "learn",
   "community",
-  "inbox",
   "challenges",
   "gallery",
   "account",
@@ -24,7 +23,6 @@ const ALL_PANELS: DashboardPanel[] = [
 const pillActions: { id: DashboardPanel; label: string }[] = [
   { id: "learn", label: "الكورسات" },
   { id: "community", label: "المجتمع" },
-  { id: "inbox", label: "الرسايل" },
   { id: "challenges", label: "المسابقات" },
   { id: "gallery", label: "معرض الفائزين" },
   { id: "account", label: "حسابك" },

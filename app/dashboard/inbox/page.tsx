@@ -1,5 +1,6 @@
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { redirect } from "next/navigation";
 
-export default function InboxPage() {
-  return <DashboardShell section="inbox" />;
+/** الرسايل moved inside المجتمع → أمجد فريد */
+export default function InboxRedirectPage() {
+  redirect("/dashboard/community");
 }

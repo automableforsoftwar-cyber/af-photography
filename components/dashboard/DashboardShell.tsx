@@ -10,7 +10,6 @@ import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoV
 import { CourseRoom } from "@/components/dashboard/CourseRoom";
 import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
-import { InboxView } from "@/components/dashboard/InboxView";
 import { useAuthStore } from "@/lib/auth-store";
 import { site } from "@/lib/content";
 
@@ -18,7 +17,6 @@ const NAV: { href: string; label: string }[] = [
   { href: "/", label: "الرئيسية" },
   { href: "/dashboard/courses", label: "الكورسات" },
   { href: "/dashboard/community", label: "المجتمع" },
-  { href: "/dashboard/inbox", label: "الرسايل" },
   { href: "/dashboard/challenges", label: "المسابقات" },
   { href: "/dashboard/gallery", label: "معرض الفائزين" },
   { href: "/dashboard/account", label: "حسابك" },
@@ -30,7 +28,6 @@ type DashboardShellProps = {
     | "courses"
     | "course"
     | "community"
-    | "inbox"
     | "challenges"
     | "gallery"
     | "account";
@@ -134,8 +131,6 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 افتح كورس مفعّل أولاً عشان تدخل مجتمع المسار المعزول.
               </div>
             )
-          ) : section === "inbox" ? (
-            <InboxView />
           ) : section === "challenges" ? (
             <CompetitionPhotoVoting />
           ) : section === "gallery" ? (
