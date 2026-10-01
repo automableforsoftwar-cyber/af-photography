@@ -8,12 +8,13 @@ export type PeerDirectMessage = {
   sender_id: string;
   receiver_id: string;
   content: string;
+  image_url: string | null;
   created_at: string;
   is_read: boolean;
 };
 
 const DM_SELECT =
-  "id, sender_id, receiver_id, content, created_at, is_read";
+  "id, sender_id, receiver_id, content, image_url, created_at, is_read";
 
 export async function fetchPeerDisplayName(userId: string): Promise<string> {
   const { data } = await supabase
@@ -54,6 +55,7 @@ export async function fetchPeerThread(
 
   return ((data ?? []) as PeerDirectMessage[]).map((m) => ({
     ...m,
+    image_url: m.image_url ?? null,
     is_read: Boolean(m.is_read),
   }));
 }
@@ -188,7 +190,8 @@ export async function markPeerThreadRead(peerUserId: string): Promise<void> {
 
 export async function sendPeerMessage(input: {
   receiverId: string;
-  content: string;
+  content?: string;
+  imageUrl?: string | null;
 }): Promise<
   { ok: true; message: PeerDirectMessage } | { ok: false; message: string }
 > {
@@ -199,8 +202,9 @@ export async function sendPeerMessage(input: {
     return { ok: false, message: "login_required" };
   }
 
-  const content = input.content.trim();
-  if (!content) {
+  const content = (input.content ?? "").trim();
+  const imageUrl = input.imageUrl?.trim() || null;
+  if (!content && !imageUrl) {
     return { ok: false, message: "empty" };
   }
 
@@ -213,7 +217,8 @@ export async function sendPeerMessage(input: {
     .insert({
       sender_id: user.id,
       receiver_id: input.receiverId,
-      content,
+      content: content || "(صورة)",
+      image_url: imageUrl,
       is_read: false,
     })
     .select(DM_SELECT)
@@ -225,7 +230,14 @@ export async function sendPeerMessage(input: {
   }
 
   const message = data as PeerDirectMessage;
-  return { ok: true, message: { ...message, is_read: Boolean(message.is_read) } };
+  return {
+    ok: true,
+    message: {
+      ...message,
+      image_url: message.image_url ?? null,
+      is_read: Boolean(message.is_read),
+    },
+  };
 }
 
 /**
@@ -251,6 +263,7 @@ export function subscribeIncomingPeerMessages(input: {
         if (!row?.id) return;
         input.onInsert({
           ...row,
+          image_url: row.image_url ?? null,
           is_read: Boolean(row.is_read),
         });
       },
