@@ -73,7 +73,10 @@ export function PublicShowcaseGallery() {
         return;
       }
       if (result.message === "already_voted") {
-        setNotice("صوّت قبل كده على الصورة دي.");
+        setNotice("صوّت قبل كده على الصورة دي — صوت واحد لكل صورة.");
+        setPosts((prev) =>
+          prev.map((p) => (p.id === postId ? { ...p, voted: true } : p)),
+        );
         return;
       }
       setNotice("مقدرناش نسجّل الصوت. حاول تاني.");
@@ -155,13 +158,12 @@ export function PublicShowcaseGallery() {
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
                       <p className="truncate font-medium text-white">
-                        {entry.title}
+                        {entry.user_name || entry.author_label || "عضو"}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {entry.author_label ?? "عضو"}
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                        {entry.description || entry.title}
                       </p>
-                      {/* Vote count always visible (view-only for guests) */}
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-slate-500">
                         {entry.vote_count} صوت
                       </p>
                     </div>

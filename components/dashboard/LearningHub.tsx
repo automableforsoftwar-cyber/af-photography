@@ -7,14 +7,12 @@ import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
 import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
-import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export type DashboardPanel =
   | "learn"
-  | "resources"
   | "challenges"
   | "community"
   | "inbox"
@@ -72,10 +70,6 @@ export function LearningHub({
             <InboxView />
           ) : panel === "challenges" ? (
             <CompetitionPhotoVoting />
-          ) : panel === "resources" ? (
-            <div className="overflow-y-auto">
-              <HubResources />
-            </div>
           ) : panel === "gallery" ? (
             <DashboardGallery />
           ) : panel === "account" ? (

@@ -2,6 +2,17 @@
 
 import { navLinks, site } from "@/lib/content";
 
+const socialLinks = [
+  {
+    label: "Facebook",
+    href: "https://web.facebook.com/personphotographerseye",
+  },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/personphotographereye/?hl=en",
+  },
+] as const;
+
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black/60 backdrop-blur-xl">
@@ -33,9 +44,28 @@ export function Footer() {
           </ul>
         </nav>
 
-        <p className="text-sm font-normal text-slate-400">
-          © {new Date().getFullYear()} {site.name}
-        </p>
+        <div>
+          <p className="text-xs font-medium tracking-wide text-yellow-400">
+            Social Media
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {socialLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-slate-300 transition-colors hover:text-yellow-400"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-sm font-normal text-slate-400">
+            © {new Date().getFullYear()} {site.name}
+          </p>
+        </div>
       </div>
     </footer>
   );

@@ -1,5 +1,6 @@
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { redirect } from "next/navigation";
 
-export default function ResourcesPage() {
-  return <DashboardShell section="resources" />;
+/** الملحقات removed — redirect to courses. */
+export default function ResourcesRemovedPage() {
+  redirect("/dashboard/courses");
 }

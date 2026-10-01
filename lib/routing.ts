@@ -7,7 +7,6 @@ export const DASHBOARD_PROTECTED_PREFIXES = [
   "/dashboard/inbox",
   "/dashboard/challenges",
   "/dashboard/gallery",
-  "/dashboard/resources",
   "/dashboard/account",
 ] as const;
 

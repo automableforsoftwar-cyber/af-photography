@@ -18,7 +18,6 @@ const ALL_PANELS: DashboardPanel[] = [
   "inbox",
   "challenges",
   "gallery",
-  "resources",
   "account",
 ];
 
@@ -27,8 +26,7 @@ const pillActions: { id: DashboardPanel; label: string }[] = [
   { id: "community", label: "المجتمع" },
   { id: "inbox", label: "الرسايل" },
   { id: "challenges", label: "المسابقات" },
-  { id: "gallery", label: "المعرض" },
-  { id: "resources", label: "الملحقات" },
+  { id: "gallery", label: "معرض الفائزين" },
   { id: "account", label: "حسابك" },
 ];
 

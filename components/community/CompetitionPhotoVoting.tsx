@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Dashboard competitions only — upload + ranking for activated students.
- * Never used on the public homepage.
+ * Course competition — device file upload, name + description, one vote per user.
  */
 
 import { motion } from "framer-motion";
@@ -15,6 +14,7 @@ import {
   voteOnPost,
   type CommunityPost,
 } from "@/lib/community-posts";
+import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -42,11 +42,17 @@ export function CompetitionPhotoVoting() {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [title, setTitle] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [userName, setUserName] = useState("");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fromEmail = email.split("@")[0] || "";
+    setUserName((prev) => prev || fromEmail);
+  }, [email]);
 
   const load = useCallback(async () => {
     if (!activeCourseId) {
@@ -76,7 +82,10 @@ export function CompetitionPhotoVoting() {
     setBusyId(null);
     if (!result.ok) {
       if (result.message === "already_voted") {
-        setNotice("صوّت قبل كده على الصورة دي.");
+        setNotice("صوّت قبل كده على الصورة دي — صوت واحد لكل صورة.");
+        setPosts((prev) =>
+          prev.map((p) => (p.id === postId ? { ...p, voted: true } : p)),
+        );
         return;
       }
       setNotice("مقدرناش نسجّل الصوت. حاول تاني.");
@@ -96,21 +105,31 @@ export function CompetitionPhotoVoting() {
       setNotice("لازم تفتح كورس مفعّل الأول.");
       return;
     }
+    if (!file || !userName.trim() || !description.trim()) {
+      setNotice("الاسم ووصف الصورة والصورة من جهازك مطلوبين.");
+      return;
+    }
     setUploadBusy(true);
     setNotice(null);
+    const up = await uploadCommunityImage(file);
+    if (!up.ok) {
+      setUploadBusy(false);
+      setNotice("مقدرناش نرفع الصورة من الجهاز.");
+      return;
+    }
     const result = await uploadCommunityPost({
-      title,
-      imageUrl,
-      authorLabel: email.split("@")[0] || "عضو",
+      description,
+      userName,
+      imageUrl: up.publicUrl,
       courseId: activeCourseId,
     });
     setUploadBusy(false);
     if (!result.ok) {
-      setNotice("مقدرناش نرفع الصورة. تأكد من العنوان والرابط.");
+      setNotice("مقدرناش ننشر الصورة. حاول تاني.");
       return;
     }
-    setTitle("");
-    setImageUrl("");
+    setDescription("");
+    setFile(null);
     setPosts((prev) => [result.post, ...prev]);
     setNotice("تم نشر الصورة — شكراً للمشاركة.");
   };
@@ -127,25 +146,42 @@ export function CompetitionPhotoVoting() {
             شارك فريمك… أو صوّت للأحسن
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            مسابقة معزولة لكورسك الحالي فقط — الرسائل والصور محفوظة في السيرفر.
+            ارفع من جهازك مع الاسم ووصف الصورة. صوت واحد لكل صورة لكل مستخدم.
           </p>
 
           <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
             <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="عنوان الفريم"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="اسمك"
+              required
               className="w-full rounded-full border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
             />
-            <input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="رابط الصورة (https://…)"
-              dir="ltr"
-              className="w-full rounded-full border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="وصف الصورة"
+              required
+              rows={2}
+              className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
             />
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
+              <span>{file ? file.name : "اختر صورة من جهازك"}</span>
+              <span className="text-xs text-yellow-400">Browse</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
             <PremiumButton
-              disabled={uploadBusy || !title.trim() || !imageUrl.trim()}
+              disabled={
+                uploadBusy ||
+                !file ||
+                !userName.trim() ||
+                !description.trim()
+              }
               onClick={() => void onUpload()}
             >
               {uploadBusy ? "جاري الرفع…" : "انشر"}
@@ -179,7 +215,7 @@ export function CompetitionPhotoVoting() {
                   <div className="relative aspect-[4/3]">
                     <Image
                       src={entry.image_url}
-                      alt={entry.title}
+                      alt={entry.description || entry.title}
                       fill
                       sizes="(max-width: 640px) 100vw, 40vw"
                       className="object-cover"
@@ -188,9 +224,11 @@ export function CompetitionPhotoVoting() {
                   </div>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
-                      <p className="truncate font-medium text-white">{entry.title}</p>
-                      <p className="text-xs text-slate-500">
-                        {entry.author_label ?? "عضو"}
+                      <p className="truncate font-medium text-white">
+                        {entry.user_name || entry.author_label || "عضو"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                        {entry.description || entry.title}
                       </p>
                     </div>
                     <button
@@ -203,7 +241,7 @@ export function CompetitionPhotoVoting() {
                           : "border-white/15 text-slate-200 hover:border-yellow-400/50 hover:text-yellow-400"
                       }`}
                     >
-                      ▲ {entry.vote_count}
+                      {entry.voted ? `تم · ${entry.vote_count}` : `▲ ${entry.vote_count}`}
                     </button>
                   </div>
                 </motion.article>
@@ -234,10 +272,10 @@ export function CompetitionPhotoVoting() {
                 </span>
                 <span className="min-w-0 flex-1 text-start">
                   <span className="block truncate text-sm font-medium text-white">
-                    {entry.title}
+                    {entry.user_name || entry.author_label || "عضو"}
                   </span>
                   <span className="block truncate text-xs text-slate-500">
-                    {entry.author_label ?? "عضو"}
+                    {entry.description || entry.title}
                   </span>
                 </span>
                 <span className="text-sm font-medium text-yellow-400">

@@ -10,7 +10,6 @@ import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoV
 import { CourseRoom } from "@/components/dashboard/CourseRoom";
 import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
-import { HubResources } from "@/components/dashboard/HubResources";
 import { InboxView } from "@/components/dashboard/InboxView";
 import { useAuthStore } from "@/lib/auth-store";
 import { site } from "@/lib/content";
@@ -21,8 +20,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/dashboard/community", label: "المجتمع" },
   { href: "/dashboard/inbox", label: "الرسايل" },
   { href: "/dashboard/challenges", label: "المسابقات" },
-  { href: "/dashboard/gallery", label: "المعرض" },
-  { href: "/dashboard/resources", label: "الملحقات" },
+  { href: "/dashboard/gallery", label: "معرض الفائزين" },
   { href: "/dashboard/account", label: "حسابك" },
 ];
 
@@ -35,7 +33,6 @@ type DashboardShellProps = {
     | "inbox"
     | "challenges"
     | "gallery"
-    | "resources"
     | "account";
   courseId?: string;
 };
@@ -143,10 +140,6 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <CompetitionPhotoVoting />
           ) : section === "gallery" ? (
             <DashboardGallery />
-          ) : section === "resources" ? (
-            <div className="overflow-y-auto">
-              <HubResources />
-            </div>
           ) : section === "account" ? (
             <AccountView />
           ) : null}

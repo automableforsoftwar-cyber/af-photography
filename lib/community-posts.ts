@@ -5,6 +5,8 @@ export type CommunityPost = {
   user_id: string;
   title: string;
   author_label: string | null;
+  user_name: string | null;
+  description: string | null;
   image_url: string;
   vote_count: number;
   created_at: string;
@@ -14,19 +16,16 @@ export type CommunityPost = {
 
 export type PostSort = "newest" | "votes";
 
+const POST_SELECT =
+  "id, user_id, title, author_label, user_name, description, image_url, vote_count, created_at, course_id";
+
 export async function fetchCommunityPosts(
   userId?: string | null,
   sort: PostSort = "newest",
   courseId?: string | null,
 ): Promise<CommunityPost[]> {
-  let query = supabase
-    .from("community_posts")
-    .select(
-      "id, user_id, title, author_label, image_url, vote_count, created_at, course_id",
-    );
+  let query = supabase.from("community_posts").select(POST_SELECT);
 
-  // Public FOMO gallery: only posts without a course_id
-  // Course-scoped: strict isolation by course_id
   if (courseId) {
     query = query.eq("course_id", courseId);
   } else {
@@ -58,6 +57,16 @@ export async function fetchCommunityPosts(
 
   const votedSet = new Set((myVotes ?? []).map((v) => v.post_id as string));
   return posts.map((p) => ({ ...p, voted: votedSet.has(p.id) }));
+}
+
+/** Winners = highest votes for a course (or public gallery if courseId null). */
+export async function fetchWinners(
+  userId?: string | null,
+  courseId?: string | null,
+  limit = 12,
+): Promise<CommunityPost[]> {
+  const posts = await fetchCommunityPosts(userId, "votes", courseId);
+  return posts.filter((p) => p.vote_count > 0).slice(0, limit);
 }
 
 export async function voteOnPost(postId: string): Promise<
@@ -100,9 +109,10 @@ export async function voteOnPost(postId: string): Promise<
 }
 
 export async function uploadCommunityPost(input: {
-  title: string;
+  title?: string;
+  description: string;
+  userName: string;
   imageUrl: string;
-  authorLabel?: string;
   courseId?: string | null;
 }): Promise<{ ok: true; post: CommunityPost } | { ok: false; message: string }> {
   const {
@@ -112,25 +122,28 @@ export async function uploadCommunityPost(input: {
     return { ok: false, message: "login_required" };
   }
 
-  const title = input.title.trim();
+  const userName = input.userName.trim();
+  const description = input.description.trim();
   const imageUrl = input.imageUrl.trim();
-  if (!title || !imageUrl) {
+  if (!userName || !description || !imageUrl) {
     return { ok: false, message: "missing_fields" };
   }
+
+  const title = (input.title?.trim() || description.slice(0, 80)).trim();
 
   const { data, error } = await supabase
     .from("community_posts")
     .insert({
       user_id: user.id,
       title,
+      description,
+      user_name: userName,
+      author_label: userName,
       image_url: imageUrl,
-      author_label: input.authorLabel?.trim() || null,
       vote_count: 0,
       course_id: input.courseId ?? null,
     })
-    .select(
-      "id, user_id, title, author_label, image_url, vote_count, created_at, course_id",
-    )
+    .select(POST_SELECT)
     .single();
 
   if (error || !data) {
