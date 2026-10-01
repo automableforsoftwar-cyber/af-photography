@@ -19,9 +19,18 @@ export function toCommunityImagePublicUrl(pathOrUrl: string): string {
   return data.publicUrl;
 }
 
+function extFromFile(file: File): string {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]{2,5}$/.test(fromName)) return fromName;
+  const fromType = file.type.split("/")[1]?.toLowerCase();
+  if (fromType === "jpeg") return "jpg";
+  if (fromType && /^[a-z0-9]{2,5}$/.test(fromType)) return fromType;
+  return "jpg";
+}
+
 /**
  * Upload an image file to the public `community_images` bucket.
- * Path: `{userId}/{timestamp}-{safeName}`
+ * Path: `{userId}/{timestamp}-{safeBase}.{ext}`
  * Returns the full public URL from getPublicUrl().
  */
 export async function uploadCommunityImage(
@@ -38,11 +47,14 @@ export async function uploadCommunityImage(
     return { ok: false, message: "not_image" };
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const safe = file.name
+  const ext = extFromFile(file);
+  const base = file.name
+    .replace(/\.[^.]+$/, "")
     .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(0, 40);
-  const path = `${user.id}/${Date.now()}-${safe || `photo.${ext}`}`;
+    .replace(/_+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 32);
+  const path = `${user.id}/${Date.now()}-${base || "photo"}.${ext}`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: "3600",

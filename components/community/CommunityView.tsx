@@ -273,9 +273,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     const result = await sendCourseMessage({
       courseId,
       channelId,
-      body: draft.trim() || "صورة",
+      body: draft.trim() || "(صورة)",
       authorLabel: authorName,
-      imageUrl: isPhotos || imageUrl ? imageUrl : null,
+      imageUrl,
       replyToId: replyTo?.id ?? null,
     });
     setSending(false);
@@ -521,14 +521,17 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                 onClick={() =>
                                   setLightboxSrc(message.image_url)
                                 }
-                                className="relative mt-3 ms-auto block aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
+                                className="relative mt-3 ms-auto block w-full max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
                               >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={message.image_url}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
+                                <span className="relative block aspect-[4/3] w-full">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={message.image_url}
+                                    alt=""
+                                    className="h-full w-full rounded-xl object-cover"
+                                    loading="lazy"
+                                  />
+                                </span>
                               </button>
                             ) : null}
 

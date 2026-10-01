@@ -143,7 +143,10 @@ export async function sendCourseMessage(input: {
   }
 
   const body = input.body.trim();
-  if (!body) {
+  const imageUrl = input.imageUrl?.trim()
+    ? toCommunityImagePublicUrl(input.imageUrl.trim())
+    : null;
+  if (!body && !imageUrl) {
     return { ok: false, message: "empty" };
   }
 
@@ -160,10 +163,8 @@ export async function sendCourseMessage(input: {
       channel_id: input.channelId,
       user_id: user.id,
       author_label: authorLabel,
-      body,
-      image_url: input.imageUrl?.trim()
-        ? toCommunityImagePublicUrl(input.imageUrl.trim())
-        : null,
+      body: body || "(صورة)",
+      image_url: imageUrl,
       reply_to_id: input.replyToId || null,
       reactions: {},
     })
@@ -177,6 +178,9 @@ export async function sendCourseMessage(input: {
 
   const message: CourseChatMessage = {
     ...(data as CourseChatMessage),
+    image_url: (data as CourseChatMessage).image_url
+      ? toCommunityImagePublicUrl((data as CourseChatMessage).image_url as string)
+      : null,
     reactions: normalizeReactions((data as CourseChatMessage).reactions),
     reply_to: null,
   };

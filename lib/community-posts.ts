@@ -1,4 +1,5 @@
 import { RETENTION_DAYS, daysAgoIso } from "@/lib/display-name";
+import { toCommunityImagePublicUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 
 export type CommunityPost = {
@@ -52,7 +53,12 @@ export async function fetchCommunityPosts(
     return [];
   }
 
-  const posts = (data ?? []) as CommunityPost[];
+  const posts = ((data ?? []) as CommunityPost[]).map((p) => ({
+    ...p,
+    image_url: p.image_url
+      ? toCommunityImagePublicUrl(p.image_url)
+      : p.image_url,
+  }));
   if (!userId || posts.length === 0) return posts;
 
   const { data: myVotes } = await supabase
@@ -129,7 +135,9 @@ export async function uploadCommunityPost(input: {
 
   const userName = input.userName.trim();
   const description = input.description.trim();
-  const imageUrl = input.imageUrl.trim();
+  const imageUrl = input.imageUrl.trim()
+    ? toCommunityImagePublicUrl(input.imageUrl.trim())
+    : "";
   if (!description || !imageUrl) {
     return { ok: false, message: "missing_fields" };
   }
@@ -173,5 +181,13 @@ export async function uploadCommunityPost(input: {
     return { ok: false, message: "upload_failed" };
   }
 
-  return { ok: true, post: data as CommunityPost };
+  return {
+    ok: true,
+    post: {
+      ...(data as CommunityPost),
+      image_url: toCommunityImagePublicUrl(
+        (data as CommunityPost).image_url,
+      ),
+    },
+  };
 }
