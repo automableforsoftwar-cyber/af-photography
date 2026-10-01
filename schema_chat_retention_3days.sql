@@ -2,6 +2,8 @@
 -- Run in Supabase SQL Editor (Dashboard → SQL).
 -- Deletes course chat, Amgad inbox DMs, and community posts older than 3 days.
 -- Votes cascade when posts are deleted (FK ON DELETE CASCADE).
+-- Storage files are removed by trg_delete_*_image triggers
+-- (see schema_storage_delete_on_post_delete.sql).
 
 -- ---------------------------------------------------------------------------
 -- A) One-shot purge (run anytime)
