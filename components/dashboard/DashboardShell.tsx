@@ -64,8 +64,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                   ? pathname === "/dashboard"
                   : item.href === "/dashboard/community"
                     ? pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`) ||
-                      pathname.startsWith("/dashboard/messages")
+                      pathname.startsWith(`${item.href}/`)
                     : pathname === item.href ||
                       pathname.startsWith(`${item.href}/`);
               return (

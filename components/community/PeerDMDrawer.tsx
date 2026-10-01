@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
   fetchPeerDisplayName,
@@ -42,6 +43,11 @@ export function PeerDMDrawer({
   const [notice, setNotice] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isSelf = Boolean(myId && peerUserId && myId === peerUserId);
 
@@ -123,11 +129,13 @@ export function PeerDMDrawer({
 
   const initials = peerName.slice(0, 2) || "؟";
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && peerUserId ? (
         <motion.div
-          className="fixed inset-0 z-[95]"
+          className="fixed inset-0 z-[9990]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -263,6 +271,7 @@ export function PeerDMDrawer({
           </motion.aside>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

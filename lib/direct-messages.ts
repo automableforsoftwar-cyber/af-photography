@@ -58,6 +58,92 @@ export async function fetchPeerThread(
   }));
 }
 
+export type PeerConversation = {
+  peerUserId: string;
+  peerName: string;
+  lastMessageAt: string;
+  unread: boolean;
+};
+
+/** Distinct peers the current user has DM history with (last 3 days). */
+export async function fetchPeerConversations(): Promise<PeerConversation[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const since = daysAgoIso(RETENTION_DAYS);
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .select(DM_SELECT)
+    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("peer conversations fetch:", error);
+    return [];
+  }
+
+  const rows = (data ?? []) as PeerDirectMessage[];
+  const byPeer = new Map<
+    string,
+    { lastMessageAt: string; unread: boolean }
+  >();
+
+  for (const row of rows) {
+    const peerId =
+      row.sender_id === user.id ? row.receiver_id : row.sender_id;
+    if (!peerId || peerId === user.id) continue;
+    const existing = byPeer.get(peerId);
+    const unreadFromPeer =
+      row.receiver_id === user.id && row.sender_id === peerId && !row.is_read;
+    if (!existing) {
+      byPeer.set(peerId, {
+        lastMessageAt: row.created_at,
+        unread: unreadFromPeer,
+      });
+    } else if (unreadFromPeer) {
+      existing.unread = true;
+    }
+  }
+
+  const peerIds = Array.from(byPeer.keys());
+  if (peerIds.length === 0) return [];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", peerIds);
+
+  const nameById = new Map<string, string>();
+  for (const p of profiles ?? []) {
+    nameById.set(
+      p.id as string,
+      pickDisplayName(
+        p.full_name as string | null,
+        p.email as string | null,
+      ),
+    );
+  }
+
+  return peerIds
+    .map((peerUserId) => {
+      const meta = byPeer.get(peerUserId)!;
+      return {
+        peerUserId,
+        peerName: nameById.get(peerUserId) || "عضو",
+        lastMessageAt: meta.lastMessageAt,
+        unread: meta.unread,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.lastMessageAt).getTime() -
+        new Date(a.lastMessageAt).getTime(),
+    );
+}
+
 /** Sender IDs with unread messages for the current user. */
 export async function fetchUnreadSenderIds(): Promise<string[]> {
   const {

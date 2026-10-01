@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { site } from "@/lib/content";
 import { signInWithEmail, signUpWithEmail } from "@/lib/enroll";
@@ -36,8 +37,13 @@ export function EnrollmentModal({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -99,21 +105,18 @@ export function EnrollmentModal({
     setLoading(false);
     onClose();
     const stay = onSuccess?.() === true;
-    // Default: stay on current page (homepage). Only redirect if onSuccess did not opt to stay
-    // and destination differs from current path.
     if (!stay && destination && destination !== "/") {
       router.replace(destination);
     }
-    if (!stay && destination === "/") {
-      // Already home-oriented — no portal redirect
-    }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -122,7 +125,7 @@ export function EnrollmentModal({
           <button
             type="button"
             aria-label="قفل النافذة"
-            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md"
             onClick={loading ? undefined : onClose}
             disabled={loading}
           />
@@ -131,7 +134,7 @@ export function EnrollmentModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_40px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+            className="relative my-auto w-full max-w-md max-h-[min(100svh,100dvh)] overflow-y-auto rounded-3xl border border-white/10 bg-[#0c0c0c]/95 shadow-[0_40px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl"
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.98 }}
@@ -289,7 +292,8 @@ export function EnrollmentModal({
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type ImageLightboxProps = {
   src: string | null;
@@ -27,6 +28,11 @@ function fileNameFromUrl(url: string): string {
 export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!src) return;
@@ -74,11 +80,13 @@ export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
     }
   }, [src, downloading]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {src ? (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -156,6 +164,7 @@ export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

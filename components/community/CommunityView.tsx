@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -21,8 +20,9 @@ import {
   type CourseChatMessage,
 } from "@/lib/course-community";
 import {
-  fetchUnreadSenderIds,
+  fetchPeerConversations,
   subscribeIncomingPeerMessages,
+  type PeerConversation,
   type PeerDirectMessage,
 } from "@/lib/direct-messages";
 import { uploadCommunityImage } from "@/lib/storage";
@@ -66,7 +66,6 @@ type CommunityViewProps = {
 };
 
 export function CommunityView({ courseId }: CommunityViewProps) {
-  const searchParams = useSearchParams();
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
@@ -85,6 +84,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     userId: string;
     name: string;
   } | null>(null);
+  const [conversations, setConversations] = useState<PeerConversation[]>([]);
   const [unreadSenders, setUnreadSenders] = useState<Set<string>>(new Set());
   const [liveIncoming, setLiveIncoming] = useState<PeerDirectMessage | null>(
     null,
@@ -96,6 +96,25 @@ export function CommunityView({ courseId }: CommunityViewProps) {
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
+
+  const refreshConversations = useCallback(async () => {
+    if (!userId) {
+      setConversations([]);
+      setUnreadSenders(new Set());
+      return;
+    }
+    const list = await fetchPeerConversations();
+    setConversations(list);
+    setUnreadSenders(
+      new Set(list.filter((c) => c.unread).map((c) => c.peerUserId)),
+    );
+  }, [userId]);
+
+  const openPeerDm = useCallback((peerUserId: string, name: string) => {
+    if (!peerUserId) return;
+    setLiveIncoming(null);
+    setDmPeer({ userId: peerUserId, name });
+  }, []);
 
   const channelId = tab === "photos" ? "photos" : "general";
   const activeChannel =
@@ -118,12 +137,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   }, [load]);
 
   useEffect(() => {
-    if (!userId) {
-      setUnreadSenders(new Set());
-      return;
-    }
-    void fetchUnreadSenderIds().then((ids) => setUnreadSenders(new Set(ids)));
-  }, [userId]);
+    void refreshConversations();
+  }, [refreshConversations]);
 
   useEffect(() => {
     if (!userId) return;
@@ -139,6 +154,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
             next.delete(message.sender_id);
             return next;
           });
+          void refreshConversations();
           return;
         }
         setUnreadSenders((prev) => {
@@ -146,18 +162,10 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           next.add(message.sender_id);
           return next;
         });
+        void refreshConversations();
       },
     });
-  }, [userId]);
-
-  useEffect(() => {
-    const dm = searchParams.get("dm");
-    if (!dm || dm === userId) return;
-    setDmPeer({
-      userId: dm,
-      name: searchParams.get("name") || "عضو",
-    });
-  }, [searchParams, userId]);
+  }, [userId, refreshConversations]);
 
   useEffect(() => {
     setReplyTo(null);
@@ -258,7 +266,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       dir="rtl"
       className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 text-right shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex-row"
     >
-      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-s">
+      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-60 lg:border-b-0 lg:border-s lg:overflow-y-auto">
         <div className="border-b border-white/10 px-4 py-4 text-right">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-white">المجتمع</p>
@@ -296,6 +304,45 @@ export function CommunityView({ courseId }: CommunityViewProps) {
             );
           })}
         </ul>
+
+        <div className="mt-auto border-t border-white/10 p-3">
+          <p className="mb-2 px-1 text-[0.7rem] font-medium tracking-wide text-slate-500">
+            الرسائل الخاصة
+          </p>
+          {conversations.length === 0 ? (
+            <p className="px-1 text-xs leading-relaxed text-slate-600">
+              اضغط على اسم عضو في الشات عشان تبدأ محادثة خاصة.
+            </p>
+          ) : (
+            <ul className="max-h-48 space-y-1 overflow-y-auto lg:max-h-64">
+              {conversations.map((c) => {
+                const active = dmPeer?.userId === c.peerUserId;
+                const unread = unreadSenders.has(c.peerUserId) || c.unread;
+                return (
+                  <li key={c.peerUserId}>
+                    <button
+                      type="button"
+                      onClick={() => openPeerDm(c.peerUserId, c.peerName)}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
+                        active
+                          ? "bg-yellow-400/15 font-medium text-yellow-400"
+                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span className="relative flex size-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.6rem] text-yellow-400">
+                        {c.peerName.slice(0, 2)}
+                        {unread ? (
+                          <span className="absolute -start-0.5 -top-0.5 size-2 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+                        ) : null}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{c.peerName}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </aside>
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -339,10 +386,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         message.reactions ?? {},
                       ).filter(([, users]) => users.length > 0);
 
-                      const openPeerDm = () => {
+                      const openPeerDmFromMessage = () => {
                         if (mine || !message.user_id) return;
-                        setLiveIncoming(null);
-                        setDmPeer({ userId: message.user_id, name: label });
+                        openPeerDm(message.user_id, label);
                       };
 
                       const hasUnread = unreadSenders.has(message.user_id);
@@ -358,7 +404,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         >
                           <button
                             type="button"
-                            onClick={openPeerDm}
+                            onClick={openPeerDmFromMessage}
                             disabled={mine}
                             title={mine ? undefined : `رسالة إلى ${label}`}
                             className={`relative flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400 ${
@@ -376,7 +422,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                             <p className="text-sm">
                               <button
                                 type="button"
-                                onClick={openPeerDm}
+                                onClick={openPeerDmFromMessage}
                                 disabled={mine}
                                 className={`font-medium ${
                                   mine
@@ -626,6 +672,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
         onClose={() => {
           setDmPeer(null);
           setLiveIncoming(null);
+          void refreshConversations();
         }}
         onOpenedPeer={(peerId) => {
           setUnreadSenders((prev) => {
@@ -634,6 +681,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
             next.delete(peerId);
             return next;
           });
+          void refreshConversations();
         }}
       />
     </div>

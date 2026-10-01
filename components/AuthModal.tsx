@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import type { CourseModule } from "@/lib/content";
 
@@ -18,9 +19,14 @@ type AuthMode = "register" | "login";
 export function AuthModal({ module, onClose }: AuthModalProps) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("register");
+  const [mounted, setMounted] = useState(false);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const open = module !== null;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -40,11 +46,13 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
     };
   }, [open, onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && module ? (
         <motion.div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -53,7 +61,7 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
           <button
             type="button"
             aria-label="قفل النافذة"
-            className="absolute inset-0 bg-background/60 backdrop-blur-md"
+            className="fixed inset-0 bg-background/60 backdrop-blur-md"
             onClick={onClose}
           />
 
@@ -61,7 +69,7 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative w-full max-w-md overflow-hidden border border-white/15 bg-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+            className="relative my-auto w-full max-w-md max-h-[min(100svh,100dvh)] overflow-y-auto border border-white/15 bg-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
             initial={{ opacity: 0, y: 28, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -152,7 +160,8 @@ export function AuthModal({ module, onClose }: AuthModalProps) {
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 
