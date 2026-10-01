@@ -518,7 +518,10 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                       };
 
                       const hasUnread = unreadSenders.has(message.user_id);
-                      const authorTitle = authorMeta[message.user_id]?.title ?? null;
+                      const authorTitle =
+                        message.author_title ||
+                        authorMeta[message.user_id]?.title ||
+                        null;
                       const trimmedBody = (message.body ?? "").trim();
                       const showText =
                         trimmedBody.length > 0 &&

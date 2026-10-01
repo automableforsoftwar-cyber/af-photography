@@ -127,6 +127,14 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 >
                   المجتمع
                 </Link>
+                {showAdmin ? (
+                  <Link
+                    href="/dashboard/admin"
+                    className="rounded-full border border-yellow-400/40 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505]"
+                  >
+                    لوحة الإدارة
+                  </Link>
+                ) : null}
               </div>
               {unlockedCourseIds.length > 0 ? (
                 <p className="mt-6 text-xs text-slate-500">

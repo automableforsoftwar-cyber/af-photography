@@ -17,6 +17,9 @@ export type CourseChatMessage = {
   created_at: string;
   reply_to_id: string | null;
   reactions: MessageReactions;
+  /** From profiles.title join */
+  author_title?: string | null;
+  author_role?: string | null;
   /** Resolved parent snippet for quote UI (client-side). */
   reply_to?: {
     id: string;
@@ -32,7 +35,7 @@ export type CommunityChannel = {
 };
 
 const MESSAGE_SELECT =
-  "id, course_id, channel_id, user_id, author_label, body, image_url, created_at, reply_to_id, reactions";
+  "id, course_id, channel_id, user_id, author_label, body, image_url, created_at, reply_to_id, reactions, profiles!course_messages_user_id_fkey(role, title)";
 
 /** Course community — exactly two channels (isolated per course_id in DB). */
 export const channels: CommunityChannel[] = [
@@ -96,12 +99,30 @@ export async function fetchCourseMessages(input: {
     return [];
   }
 
-  const rows = ((data ?? []) as CourseChatMessage[]).map((m) => ({
-    ...m,
-    image_url: m.image_url ? toCommunityImagePublicUrl(m.image_url) : null,
-    reply_to_id: m.reply_to_id ?? null,
-    reactions: normalizeReactions(m.reactions),
-  }));
+  const rows = ((data ?? []) as Array<
+    CourseChatMessage & {
+      profiles?: { role?: string | null; title?: string | null } | null;
+    }
+  >).map((m) => {
+    const profile = m.profiles;
+    const author_role = profile?.role ?? null;
+    const author_title =
+      profile?.title?.trim() ||
+      (author_role === "instructor"
+        ? "المدرب"
+        : author_role === "organizer"
+          ? "المنظم"
+          : null);
+    const { profiles: _ignored, ...rest } = m;
+    return {
+      ...rest,
+      image_url: m.image_url ? toCommunityImagePublicUrl(m.image_url) : null,
+      reply_to_id: m.reply_to_id ?? null,
+      reactions: normalizeReactions(m.reactions),
+      author_title,
+      author_role,
+    };
+  });
 
   return attachReplyParents(rows);
 }

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { getModuleById, modules } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
@@ -12,11 +13,19 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function AccountView() {
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
+  const role = useAuthStore((s) => s.role);
+  const title = useAuthStore((s) => s.title);
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
+  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
   const active = activeCourseId ? getModuleById(activeCourseId) : null;
   const headline = pickDisplayName(fullName, email) || "عضو AF P";
+  const isStaff = role === "instructor" || role === "organizer";
+
+  useEffect(() => {
+    void refreshProfileFlags();
+  }, [refreshProfileFlags]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
@@ -30,10 +39,25 @@ export function AccountView() {
         <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
           {headline}
         </h2>
+        {title ? (
+          <p className="mt-2 inline-flex rounded-full border border-yellow-400/40 bg-yellow-400/15 px-3 py-1 text-xs font-semibold text-yellow-300">
+            {title} · {role}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">الدور: {role}</p>
+        )}
         {fullName.trim() && email ? (
           <p className="mt-2 text-sm text-slate-400" dir="ltr">
             {email}
           </p>
+        ) : null}
+        {isStaff ? (
+          <Link
+            href="/dashboard/admin"
+            className="mt-4 inline-flex rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
+          >
+            فتح لوحة الإدارة
+          </Link>
         ) : null}
         <div className="my-4 border-b border-white/10" />
         <p className="text-slate-300 leading-relaxed">

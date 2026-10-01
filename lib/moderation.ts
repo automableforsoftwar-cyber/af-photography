@@ -85,6 +85,27 @@ export async function deleteCourseMessage(
   return { ok: true };
 }
 
+/** Competition / gallery posts (community_posts). */
+export async function deleteCommunityPost(
+  postId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const flags = await fetchMyProfileFlags();
+  if (!isStaffRole(flags.role) || flags.isBlocked) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { error } = await supabase
+    .from("community_posts")
+    .delete()
+    .eq("id", postId);
+
+  if (error) {
+    console.error("deleteCommunityPost:", error);
+    return { ok: false, message: "delete_failed" };
+  }
+  return { ok: true };
+}
+
 export async function setUserBlocked(
   userId: string,
   blocked: boolean,
@@ -109,16 +130,29 @@ export async function setUserBlocked(
 export type AdminAnalytics = {
   totalUsers: number;
   activeSubscriptions: number;
+  totalCommunityPosts: number;
+  totalCourseMessages: number;
   byCourse: { courseId: string; courseTitle: string; count: number }[];
 };
 
 export async function fetchAdminAnalytics(): Promise<AdminAnalytics> {
-  const [{ count: totalUsers }, enrollments] = await Promise.all([
+  const [
+    { count: totalUsers },
+    enrollments,
+    { count: totalCommunityPosts },
+    { count: totalCourseMessages },
+  ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase
       .from("user_courses")
       .select("course_id, expires_at")
       .gt("expires_at", new Date().toISOString()),
+    supabase
+      .from("community_posts")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("course_messages")
+      .select("id", { count: "exact", head: true }),
   ]);
 
   const byCourseMap = new Map<string, number>();
@@ -139,6 +173,8 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalytics> {
   return {
     totalUsers: totalUsers ?? 0,
     activeSubscriptions: enrollments.data?.length ?? 0,
+    totalCommunityPosts: totalCommunityPosts ?? 0,
+    totalCourseMessages: totalCourseMessages ?? 0,
     byCourse,
   };
 }

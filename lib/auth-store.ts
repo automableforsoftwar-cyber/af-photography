@@ -6,7 +6,7 @@ import { persist } from "zustand/middleware";
 import { fetchUnlockedCourseIds, signOutSession } from "@/lib/enroll";
 import { fetchMyProfileFlags } from "@/lib/moderation";
 import { clearAuthCookies, syncAuthCookies } from "@/lib/routing";
-import { isStaffRole, type UserRole } from "@/lib/roles";
+import { isStaffRole, normalizeRole, type UserRole } from "@/lib/roles";
 import { supabase } from "@/lib/supabase";
 
 function pushCookies(state: {
@@ -96,10 +96,14 @@ export const useAuthStore = create<AuthState>()(
         };
         set(next);
         pushCookies(next);
+        // Always pull live RBAC from profiles after login
+        void get().refreshProfileFlags();
       },
       setActiveCourseId: (courseId) => set({ activeCourseId: courseId }),
       addUnlockedCourse: (courseId) => {
-        const nextIds = Array.from(new Set([...get().unlockedCourseIds, courseId]));
+        const nextIds = Array.from(
+          new Set([...get().unlockedCourseIds, courseId]),
+        );
         const next = {
           ...get(),
           unlockedCourseIds: nextIds,
@@ -132,15 +136,29 @@ export const useAuthStore = create<AuthState>()(
         }
 
         const user = session.user as User;
-        const [{ data: profile }, unlocked, flags] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("email, full_name, role, title, is_blocked")
-            .eq("id", user.id)
-            .maybeSingle(),
-          fetchUnlockedCourseIds(user.id),
-          fetchMyProfileFlags(),
-        ]);
+        const [{ data: profile, error: profileError }, unlocked] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("email, full_name, role, title, is_blocked")
+              .eq("id", user.id)
+              .maybeSingle(),
+            fetchUnlockedCourseIds(user.id),
+          ]);
+
+        if (profileError) {
+          console.error("hydrateFromSession profile:", profileError);
+        }
+
+        const role = normalizeRole(profile?.role);
+        const title =
+          (profile?.title as string | null)?.trim() ||
+          (role === "instructor"
+            ? "المدرب"
+            : role === "organizer"
+              ? "المنظم"
+              : null);
+        const isBlocked = Boolean(profile?.is_blocked);
 
         const prevActive = get().activeCourseId;
         const activeCourseId =
@@ -156,11 +174,11 @@ export const useAuthStore = create<AuthState>()(
         const next = {
           isLoggedIn: true as const,
           userId: user.id,
-          email: profile?.email ?? user.email ?? get().email,
+          email: (profile?.email as string | null) ?? user.email ?? get().email,
           fullName,
-          role: flags.role,
-          title: flags.title,
-          isBlocked: flags.isBlocked,
+          role,
+          title,
+          isBlocked,
           unlockedCourseIds: unlocked,
           activeCourseId,
         };
@@ -212,7 +230,8 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "af-academy-auth-v6",
+      // v7: force clients to drop stale student-role persist after RBAC launch
+      name: "af-academy-auth-v7",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,

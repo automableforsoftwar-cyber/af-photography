@@ -9,6 +9,7 @@ import { site } from "@/lib/content";
 import { signInWithEmail, signUpWithEmail } from "@/lib/enroll";
 import { useAuthStore } from "@/lib/auth-store";
 import { getPostAuthPath } from "@/lib/routing";
+import { supabase } from "@/lib/supabase";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -100,6 +101,9 @@ export function EnrollmentModal({
       email: result.email,
       fullName: result.fullName,
     });
+    const { data: sessionData } = await supabase.auth.getSession();
+    await useAuthStore.getState().hydrateFromSession(sessionData.session);
+    await useAuthStore.getState().refreshProfileFlags();
     await useAuthStore.getState().refreshCourses();
     const destination = getPostAuthPath();
     setLoading(false);

@@ -6,19 +6,28 @@ import { useProgressStore } from "@/lib/progress-store";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Rehydrates Zustand + keeps it in sync with the Supabase auth session.
+ * Rehydrates Zustand FIRST, then syncs role/title from Supabase session.
+ * Order matters: if session sync runs before persist.rehydrate finishes,
+ * stale localStorage (role=student) overwrites the live DB role.
  */
 export function StoreHydration() {
   useEffect(() => {
-    void useAuthStore.persist.rehydrate();
-    void useProgressStore.persist.rehydrate();
-
     let cancelled = false;
 
     const sync = async () => {
+      await Promise.all([
+        useAuthStore.persist.rehydrate(),
+        useProgressStore.persist.rehydrate(),
+      ]);
+      if (cancelled) return;
+
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
       await useAuthStore.getState().hydrateFromSession(data.session);
+      // Force a second profile read so RBAC always wins over stale persist
+      if (data.session?.user) {
+        await useAuthStore.getState().refreshProfileFlags();
+      }
     };
 
     void sync();
@@ -26,7 +35,12 @@ export function StoreHydration() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      void useAuthStore.getState().hydrateFromSession(session);
+      void (async () => {
+        await useAuthStore.getState().hydrateFromSession(session);
+        if (session?.user) {
+          await useAuthStore.getState().refreshProfileFlags();
+        }
+      })();
     });
 
     return () => {
