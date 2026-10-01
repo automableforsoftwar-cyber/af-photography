@@ -115,7 +115,11 @@ export const useAuthStore = create<AuthState>()(
         });
         pushCookies(next);
       },
-      hasCourse: (courseId) => get().unlockedCourseIds.includes(courseId),
+      hasCourse: (courseId) => {
+        // Admin Master Key — staff never need VIP codes
+        if (isStaffRole(get().role) && !get().isBlocked) return true;
+        return get().unlockedCourseIds.includes(courseId);
+      },
       isStaff: () => isStaffRole(get().role) && !get().isBlocked,
       hydrateFromSession: async (session) => {
         if (!session?.user) {
@@ -230,8 +234,8 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      // v7: force clients to drop stale student-role persist after RBAC launch
-      name: "af-academy-auth-v7",
+      // v8: staff master key — refresh unlocks + role from DB
+      name: "af-academy-auth-v8",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,

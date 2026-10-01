@@ -1,3 +1,5 @@
+import { modules } from "@/lib/content";
+import { isStaffRole, normalizeRole } from "@/lib/roles";
 import { supabase } from "@/lib/supabase";
 
 export const CODE_INVALID_MSG =
@@ -282,10 +284,21 @@ export async function redeemCourseCode(codeInput: string): Promise<RedeemResult>
   return { ok: true, courseId, expiresAt };
 }
 
-/** Active (non-expired) course IDs only. */
+/** Active (non-expired) course IDs only — staff get every course (Admin Master Key). */
 export async function fetchUnlockedCourseIds(
   userId: string,
 ): Promise<string[]> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_blocked")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const role = normalizeRole(profile?.role);
+  if (isStaffRole(role) && !profile?.is_blocked) {
+    return modules.map((m) => m.id);
+  }
+
   const enrollments = await fetchActiveEnrollments(userId);
   return enrollments.map((e) => e.courseId);
 }

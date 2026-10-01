@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
-import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { modules, getModuleById } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -13,9 +13,10 @@ type CoursesHubProps = {
   onUnlocked?: (courseId: string) => void;
 };
 
-/** Catalog + VIP on /dashboard/courses — enter a course via /dashboard/courses/[courseId]. */
+/** Catalog + VIP on /dashboard/courses — staff see everything unlocked. */
 export function CoursesHub({ onUnlocked }: CoursesHubProps) {
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
+  const { isStaff } = useLiveStaffRole();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto pb-8">
@@ -30,18 +31,21 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
           مساراتك
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-400">
-          ادخل أي كورس. لو مش مفتوح عندك، هتظهر شاشة تفعيل كود الـ VIP جوه صفحة
-          الكورس — كل كود بيفتح كورس واحد فقط.
+          {isStaff
+            ? "أنت من فريق الإدارة — كل الكورسات مفتوحة بدون كود VIP."
+            : "ادخل أي كورس. لو مش مفتوح عندك، هتظهر شاشة تفعيل كود الـ VIP جوه صفحة الكورس — كل كود بيفتح كورس واحد فقط."}
         </p>
       </motion.div>
 
-      <div className="mx-auto w-full max-w-3xl">
-        <RedeemCodePanel onUnlocked={onUnlocked} />
-      </div>
+      {!isStaff ? (
+        <div className="mx-auto w-full max-w-3xl">
+          <RedeemCodePanel onUnlocked={onUnlocked} />
+        </div>
+      ) : null}
 
       <ul className="mx-auto grid w-full max-w-3xl gap-4 sm:grid-cols-2">
         {modules.map((course, index) => {
-          const unlocked = unlockedCourseIds.includes(course.id);
+          const unlocked = isStaff || unlockedCourseIds.includes(course.id);
           return (
             <motion.li
               key={course.id}
@@ -61,7 +65,7 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
                         : "bg-white/10 text-slate-400"
                     }`}
                   >
-                    {unlocked ? "مفتوح" : "مقفول"}
+                    {isStaff ? "إدارة · مفتوح" : unlocked ? "مفتوح" : "مقفول"}
                   </span>
                 </div>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-400">
@@ -83,7 +87,11 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
         })}
       </ul>
 
-      {unlockedCourseIds.length > 0 ? (
+      {isStaff ? (
+        <p className="mx-auto max-w-3xl text-center text-xs text-yellow-400/80">
+          مفتاح الإدارة نشط — وصول كامل لكل المسارات بدون اشتراك.
+        </p>
+      ) : unlockedCourseIds.length > 0 ? (
         <p className="mx-auto max-w-3xl text-center text-xs text-slate-500">
           مفتوح عندك:{" "}
           {unlockedCourseIds.map((id) => getModuleById(id).title).join(" · ")}

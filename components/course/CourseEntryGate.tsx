@@ -5,20 +5,29 @@ import { useRouter } from "next/navigation";
 import { BlackScreenActivation } from "@/components/course/BlackScreenActivation";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { useAuthStore } from "@/lib/auth-store";
-import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 import { modules } from "@/lib/content";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
+import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 /**
  * Locked → black screen only (no dashboard chrome).
  * Unlocked → full dashboard layout around course learning.
+ * Staff (instructor/organizer) always unlock — Admin Master Key.
  */
 export function CourseEntryGate({ courseId }: { courseId: string }) {
   const router = useRouter();
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const hasCourse = useAuthStore((s) => s.hasCourse);
+  const { ready: staffReady, isStaff } = useLiveStaffRole();
   const known = modules.some((m) => m.id === courseId);
-  const unlocked = hydrated && isLoggedIn && hasCourse(courseId);
+
+  // Master key OR VIP unlock
+  const unlocked =
+    hydrated &&
+    isLoggedIn &&
+    staffReady &&
+    (isStaff || hasCourse(courseId));
 
   useEffect(() => {
     if (!hydrated) return;
@@ -27,7 +36,7 @@ export function CourseEntryGate({ courseId }: { courseId: string }) {
     }
   }, [hydrated, isLoggedIn, router]);
 
-  if (!hydrated || !isLoggedIn) {
+  if (!hydrated || !isLoggedIn || !staffReady) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-black text-sm text-slate-500">
         …

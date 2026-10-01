@@ -8,7 +8,9 @@ import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { SocialIconLinks } from "@/components/SocialIconLinks";
 import { navLinks, site } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
+import Link from "next/link";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -16,6 +18,7 @@ export function Navbar() {
   const [authOpen, setAuthOpen] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const { isStaff } = useLiveStaffRole();
 
   useEffect(() => {
     const onScroll = () => {
@@ -80,6 +83,14 @@ export function Navbar() {
           <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
             <>
+              {isStaff ? (
+                <Link
+                  href="/dashboard/admin"
+                  className="rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:px-4 sm:text-sm"
+                >
+                  الإدارة
+                </Link>
+              ) : null}
               <a
                 href="#curriculum"
                 className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
@@ -153,13 +164,24 @@ export function Navbar() {
                 transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
               >
                 {isLoggedIn ? (
-                  <a
-                    href="#curriculum"
-                    className="font-display text-3xl font-bold text-yellow-400"
-                    onClick={() => setOpen(false)}
-                  >
-                    الكورسات
-                  </a>
+                  <>
+                    {isStaff ? (
+                      <Link
+                        href="/dashboard/admin"
+                        className="font-display text-3xl font-bold text-yellow-400"
+                        onClick={() => setOpen(false)}
+                      >
+                        الإدارة
+                      </Link>
+                    ) : null}
+                    <a
+                      href="#curriculum"
+                      className="font-display text-3xl font-bold text-yellow-400"
+                      onClick={() => setOpen(false)}
+                    >
+                      الكورسات
+                    </a>
+                  </>
                 ) : (
                   <button
                     type="button"

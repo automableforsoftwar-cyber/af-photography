@@ -9,11 +9,11 @@ import { pickDisplayName } from "@/lib/display-name";
 import {
   fetchAdminAnalytics,
   fetchAllProfilesForAdmin,
-  fetchMyProfileFlags,
   setUserBlocked,
   type AdminAnalytics,
 } from "@/lib/moderation";
-import { isStaffRole, type ProfileModeration } from "@/lib/roles";
+import { type ProfileModeration } from "@/lib/roles";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 function StatCard({
   label,
@@ -38,10 +38,7 @@ function StatCard({
 export function AdminDashboard() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
-  const myTitle = useAuthStore((s) => s.title);
-  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
-  const [accessChecked, setAccessChecked] = useState(false);
-  const [allowed, setAllowed] = useState(false);
+  const { ready, isStaff, title: myTitle } = useLiveStaffRole();
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [users, setUsers] = useState<ProfileModeration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,25 +57,13 @@ export function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      // Live DB check — never trust stale Zustand alone
-      const flags = await fetchMyProfileFlags();
-      if (cancelled) return;
-      await refreshProfileFlags();
-      const ok = isStaffRole(flags.role) && !flags.isBlocked;
-      setAllowed(ok);
-      setAccessChecked(true);
-      if (!ok) {
-        router.replace("/dashboard/courses");
-        return;
-      }
-      await load();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [load, refreshProfileFlags, router]);
+    if (!ready) return;
+    if (!isStaff) {
+      router.replace("/dashboard/courses");
+      return;
+    }
+    void load();
+  }, [ready, isStaff, load, router]);
 
   const toggleBlock = async (profile: ProfileModeration) => {
     if (profile.id === userId) {
@@ -100,11 +85,11 @@ export function AdminDashboard() {
     );
   };
 
-  if (!accessChecked || !allowed) {
+  if (!ready || !isStaff) {
     return (
       <AuthGate>
         <div className="flex min-h-svh items-center justify-center bg-[#050505] text-sm text-slate-500">
-          {accessChecked ? "بنحوّلك للوحة التحكم…" : "بنتحقق من الصلاحيات…"}
+          {ready ? "بنحوّلك للوحة التحكم…" : "بنتحقق من الصلاحيات…"}
         </div>
       </AuthGate>
     );

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
@@ -12,8 +11,9 @@ import { CourseRoom } from "@/components/dashboard/CourseRoom";
 import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { useAuthStore } from "@/lib/auth-store";
-import { site } from "@/lib/content";
+import { modules, site } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const NAV: { href: string; label: string; staffOnly?: boolean }[] = [
   { href: "/", label: "الرئيسية" },
@@ -46,17 +46,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
-  const role = useAuthStore((s) => s.role);
-  const isBlocked = useAuthStore((s) => s.isBlocked);
-  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
   const welcomeName = pickDisplayName(fullName, email);
-  const showAdmin =
-    (role === "instructor" || role === "organizer") && !isBlocked;
+  const { isStaff, title: staffTitle } = useLiveStaffRole();
+  const showAdmin = isStaff;
   const navItems = NAV.filter((item) => !item.staffOnly || showAdmin);
-
-  useEffect(() => {
-    void refreshProfileFlags();
-  }, [refreshProfileFlags]);
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
@@ -132,13 +125,15 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                     href="/dashboard/admin"
                     className="rounded-full border border-yellow-400/40 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505]"
                   >
-                    لوحة الإدارة
+                    لوحة الإدارة{staffTitle ? ` · ${staffTitle}` : ""}
                   </Link>
                 ) : null}
               </div>
-              {unlockedCourseIds.length > 0 ? (
+              {unlockedCourseIds.length > 0 || isStaff ? (
                 <p className="mt-6 text-xs text-slate-500">
-                  كورسات مفتوحة: {unlockedCourseIds.length}
+                  {isStaff
+                    ? "مفتاح الإدارة نشط — كل الكورسات مفتوحة."
+                    : `كورسات مفتوحة: ${unlockedCourseIds.length}`}
                 </p>
               ) : (
                 <p className="mt-6 text-xs text-slate-500">
@@ -151,8 +146,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           ) : section === "course" && courseId ? (
             <CourseRoom courseId={courseId} />
           ) : section === "community" ? (
-            activeCourseId ? (
-              <CommunityView courseId={activeCourseId} />
+            activeCourseId || isStaff ? (
+              <CommunityView
+                courseId={activeCourseId ?? modules[0]?.id ?? "photographer-eye"}
+              />
             ) : (
               <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
                 افتح كورس مفعّل أولاً عشان تدخل مجتمع المسار المعزول.

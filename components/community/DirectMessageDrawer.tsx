@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ImageLightbox } from "@/components/ui/ImageLightbox";
-import { RtlScroll } from "@/components/ui/RtlScroll";
-import { RoleBadge } from "@/components/community/RoleBadge";
+import { useAuthStore } from "@/lib/auth-store";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 import {
   fetchPeerDisplayName,
   fetchPeerThread,
@@ -14,7 +13,9 @@ import {
 } from "@/lib/direct-messages";
 import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
-import { useAuthStore } from "@/lib/auth-store";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import { RtlScroll } from "@/components/ui/RtlScroll";
+import { RoleBadge } from "@/components/community/RoleBadge";
 
 export type ActiveChatUser = {
   userId: string;
@@ -39,11 +40,9 @@ export function DirectMessageDrawer({
   onOpenedPeer,
 }: DirectMessageDrawerProps) {
   const myId = useAuthStore((s) => s.userId);
-  const myRole = useAuthStore((s) => s.role);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
-  const canModerate =
-    (myRole === "instructor" || myRole === "organizer") && !isBlocked;
+  const { isStaff } = useLiveStaffRole();
+  const canModerate = isStaff;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
   const [peerTitle, setPeerTitle] = useState<string | null>(null);
@@ -72,8 +71,7 @@ export function DirectMessageDrawer({
 
   useEffect(() => {
     setMounted(true);
-    void refreshProfileFlags();
-  }, [refreshProfileFlags]);
+  }, []);
 
   // Fetch history once per peer open — never tied to parent re-renders.
   useEffect(() => {
