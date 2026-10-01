@@ -1,3 +1,4 @@
+import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
 import { supabase } from "@/lib/supabase";
 
 export type DirectMessage = {
@@ -18,11 +19,13 @@ export async function fetchMyDirectMessages(
   } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const since = daysAgoIso(RETENTION_DAYS);
   const { data, error } = await supabase
     .from("direct_messages")
     .select("id, course_id, sender_id, sender_name, body, image_url, created_at")
     .eq("course_id", courseId)
     .eq("sender_id", user.id)
+    .gte("created_at", since)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -53,12 +56,28 @@ export async function sendDirectMessage(input: {
     return { ok: false, message: "empty" };
   }
 
+  let senderName = input.senderName?.trim() || "";
+  if (!senderName) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", user.id)
+      .maybeSingle();
+    senderName = pickDisplayName(
+      (profile?.full_name as string | null) ||
+        (typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : null),
+      (profile?.email as string | null) || user.email,
+    );
+  }
+
   const { data, error } = await supabase
     .from("direct_messages")
     .insert({
       course_id: input.courseId,
       sender_id: user.id,
-      sender_name: input.senderName?.trim() || null,
+      sender_name: senderName,
       body: body || "(صورة)",
       image_url: input.imageUrl?.trim() || null,
     })

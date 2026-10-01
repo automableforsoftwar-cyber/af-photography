@@ -1,3 +1,4 @@
+import { RETENTION_DAYS, daysAgoIso } from "@/lib/display-name";
 import { supabase } from "@/lib/supabase";
 
 export type CommunityPost = {
@@ -24,7 +25,11 @@ export async function fetchCommunityPosts(
   sort: PostSort = "newest",
   courseId?: string | null,
 ): Promise<CommunityPost[]> {
-  let query = supabase.from("community_posts").select(POST_SELECT);
+  const since = daysAgoIso(RETENTION_DAYS);
+  let query = supabase
+    .from("community_posts")
+    .select(POST_SELECT)
+    .gte("created_at", since);
 
   if (courseId) {
     query = query.eq("course_id", courseId);
@@ -125,8 +130,25 @@ export async function uploadCommunityPost(input: {
   const userName = input.userName.trim();
   const description = input.description.trim();
   const imageUrl = input.imageUrl.trim();
-  if (!userName || !description || !imageUrl) {
+  if (!description || !imageUrl) {
     return { ok: false, message: "missing_fields" };
+  }
+
+  let resolvedName = userName;
+  if (!resolvedName) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", user.id)
+      .maybeSingle();
+    resolvedName =
+      (profile?.full_name as string | null)?.trim() ||
+      (typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name.trim()
+        : "") ||
+      (profile?.email as string | null)?.split("@")[0]?.trim() ||
+      user.email?.split("@")[0]?.trim() ||
+      "عضو";
   }
 
   const title = (input.title?.trim() || description.slice(0, 80)).trim();
@@ -137,8 +159,8 @@ export async function uploadCommunityPost(input: {
       user_id: user.id,
       title,
       description,
-      user_name: userName,
-      author_label: userName,
+      user_name: resolvedName,
+      author_label: resolvedName,
       image_url: imageUrl,
       vote_count: 0,
       course_id: input.courseId ?? null,

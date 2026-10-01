@@ -10,6 +10,7 @@ import {
 } from "@/lib/direct-messages";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
+import { pickDisplayName } from "@/lib/display-name";
 
 type AmgadInboxProps = {
   courseId: string;
@@ -25,8 +26,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const senderName =
-    fullName.trim() || email.split("@")[0]?.trim() || "طالب";
+  const senderName = pickDisplayName(fullName, email);
 
   const load = useCallback(async () => {
     setLoading(true);

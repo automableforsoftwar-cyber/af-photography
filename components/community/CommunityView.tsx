@@ -14,6 +14,7 @@ import {
 } from "@/lib/course-community";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
+import { pickDisplayName } from "@/lib/display-name";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -56,8 +57,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const authorName =
-    fullName.trim() || email.split("@")[0]?.trim() || "عضو";
+  const authorName = pickDisplayName(fullName, email);
 
   const channelId = tab === "photos" ? "photos" : "general";
   const activeChannel =

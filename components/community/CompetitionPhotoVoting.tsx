@@ -16,6 +16,7 @@ import {
 } from "@/lib/community-posts";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
+import { pickDisplayName } from "@/lib/display-name";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -49,8 +50,7 @@ export function CompetitionPhotoVoting() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const displayName =
-    fullName.trim() || email.split("@")[0]?.trim() || "عضو";
+  const displayName = pickDisplayName(fullName, email);
 
   const load = useCallback(async () => {
     if (!activeCourseId) {

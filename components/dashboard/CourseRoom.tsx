@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { getModuleById, modules } from "@/lib/content";
+import { pickDisplayName } from "@/lib/display-name";
 import { useAuthStore } from "@/lib/auth-store";
 
 type CourseRoomProps = {
@@ -40,8 +41,7 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
     );
   }
 
-  const name =
-    fullName.trim() || email.split("@")[0]?.trim() || "متعلّم";
+  const name = pickDisplayName(fullName, email);
 
   if (!started) {
     return (

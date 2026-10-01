@@ -12,6 +12,7 @@ import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { useAuthStore } from "@/lib/auth-store";
 import { site } from "@/lib/content";
+import { pickDisplayName } from "@/lib/display-name";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/", label: "الرئيسية" },
@@ -42,8 +43,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
-  const welcomeName =
-    fullName.trim() || email.split("@")[0]?.trim() || "";
+  const welcomeName = pickDisplayName(fullName, email);
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);

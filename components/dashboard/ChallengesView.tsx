@@ -149,12 +149,12 @@ export function ChallengesView() {
 
   return (
     <div
-      dir="ltr"
+      dir="rtl"
       className="flex h-full min-h-0 flex-col gap-6 overflow-hidden lg:flex-row"
     >
-      {/* Physical FAR LEFT — dir=ltr locks leaderboard to screen-left */}
+      {/* Leaderboard */}
       <aside className="order-2 h-fit w-full shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:order-1 lg:sticky lg:top-0 lg:w-64 xl:w-72">
-        <div dir="rtl">
+        <div>
           <h3 className="font-display text-lg font-bold text-white">الترتيب</h3>
           <p className="mt-1 text-xs text-slate-500">حسب الأصوات</p>
           <motion.ol

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
 import { getModuleById, modules } from "@/lib/content";
+import { pickDisplayName } from "@/lib/display-name";
 import { useAuthStore } from "@/lib/auth-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -15,8 +16,7 @@ export function AccountView() {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const active = activeCourseId ? getModuleById(activeCourseId) : null;
-  const headline =
-    fullName.trim() || email || "عضو AF P";
+  const headline = pickDisplayName(fullName, email) || "عضو AF P";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">

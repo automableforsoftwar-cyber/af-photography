@@ -1,3 +1,4 @@
+import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
 import { supabase } from "@/lib/supabase";
 
 export type CourseChatMessage = {
@@ -35,6 +36,7 @@ export async function fetchCourseMessages(input: {
   courseId: string;
   channelId: string;
 }): Promise<CourseChatMessage[]> {
+  const since = daysAgoIso(RETENTION_DAYS);
   const { data, error } = await supabase
     .from("course_messages")
     .select(
@@ -42,6 +44,7 @@ export async function fetchCourseMessages(input: {
     )
     .eq("course_id", input.courseId)
     .eq("channel_id", input.channelId)
+    .gte("created_at", since)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -50,6 +53,26 @@ export async function fetchCourseMessages(input: {
   }
 
   return (data ?? []) as CourseChatMessage[];
+}
+
+async function resolveAuthorName(
+  userId: string,
+  fallback?: string | null,
+  email?: string | null,
+): Promise<string> {
+  const fromInput = fallback?.trim();
+  if (fromInput) return fromInput;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return pickDisplayName(
+    profile?.full_name as string | null,
+    (profile?.email as string | null) || email,
+  );
 }
 
 export async function sendCourseMessage(input: {
@@ -73,13 +96,19 @@ export async function sendCourseMessage(input: {
     return { ok: false, message: "empty" };
   }
 
+  const authorLabel = await resolveAuthorName(
+    user.id,
+    input.authorLabel,
+    user.email,
+  );
+
   const { data, error } = await supabase
     .from("course_messages")
     .insert({
       course_id: input.courseId,
       channel_id: input.channelId,
       user_id: user.id,
-      author_label: input.authorLabel?.trim() || null,
+      author_label: authorLabel,
       body,
       image_url: input.imageUrl?.trim() || null,
     })
