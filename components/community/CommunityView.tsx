@@ -454,6 +454,16 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                       };
 
                       const hasUnread = unreadSenders.has(message.user_id);
+                      const trimmedBody = (message.body ?? "").trim();
+                      const showText =
+                        trimmedBody.length > 0 &&
+                        trimmedBody !== "صورة" &&
+                        trimmedBody !== "(صورة)";
+                      const replyBody = (message.reply_to?.body ?? "").trim();
+                      const showReplyBody =
+                        replyBody.length > 0 &&
+                        replyBody !== "صورة" &&
+                        replyBody !== "(صورة)";
 
                       return (
                         <motion.article
@@ -505,15 +515,17 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                   رد على{" "}
                                   {message.reply_to.author_label || "عضو"}
                                 </p>
-                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
-                                  {message.reply_to.body}
-                                </p>
+                                {showReplyBody ? (
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
+                                    {message.reply_to.body}
+                                  </p>
+                                ) : null}
                               </div>
                             ) : null}
 
-                            {message.body?.trim() ? (
+                            {showText ? (
                               <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
-                                {message.body}
+                                {trimmedBody}
                               </p>
                             ) : null}
 
@@ -523,7 +535,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                 onClick={() =>
                                   setLightboxSrc(message.image_url)
                                 }
-                                className="relative mt-3 ms-auto block w-full max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
+                                className={`relative ms-auto block w-full max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40 ${
+                                  showText || message.reply_to ? "mt-3" : "mt-1.5"
+                                }`}
                               >
                                 <span className="relative block aspect-[4/3] w-full">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
