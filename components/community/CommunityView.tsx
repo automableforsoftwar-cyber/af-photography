@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -59,6 +60,7 @@ type CommunityViewProps = {
 };
 
 export function CommunityView({ courseId }: CommunityViewProps) {
+  const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
@@ -264,6 +266,16 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         message.reactions ?? {},
                       ).filter(([, users]) => users.length > 0);
 
+                      const openPeerDm = () => {
+                        if (mine || !message.user_id) return;
+                        const q = new URLSearchParams({
+                          name: label,
+                        });
+                        router.push(
+                          `/dashboard/messages/${encodeURIComponent(message.user_id)}?${q.toString()}`,
+                        );
+                      };
+
                       return (
                         <motion.article
                           key={message.id}
@@ -273,14 +285,33 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
                         >
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400">
+                          <button
+                            type="button"
+                            onClick={openPeerDm}
+                            disabled={mine}
+                            title={mine ? undefined : `رسالة إلى ${label}`}
+                            className={`flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400 ${
+                              mine
+                                ? "cursor-default"
+                                : "cursor-pointer transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
+                            }`}
+                          >
                             {label.slice(0, 2)}
-                          </span>
+                          </button>
                           <div className="min-w-0 flex-1 text-right">
                             <p className="text-sm">
-                              <span className="font-medium text-white">
+                              <button
+                                type="button"
+                                onClick={openPeerDm}
+                                disabled={mine}
+                                className={`font-medium ${
+                                  mine
+                                    ? "cursor-default text-white"
+                                    : "text-white transition hover:text-yellow-400 hover:underline"
+                                }`}
+                              >
                                 {label}
-                              </span>
+                              </button>
                               <span className="me-2 text-xs text-slate-500">
                                 {formatMessageTime(message.created_at)}
                               </span>

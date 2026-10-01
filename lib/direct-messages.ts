@@ -1,19 +1,32 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
 import { supabase } from "@/lib/supabase";
 
-export type DirectMessage = {
+/** Peer-to-peer private DM (public.direct_messages). */
+export type PeerDirectMessage = {
   id: string;
-  course_id: string;
   sender_id: string;
-  sender_name: string | null;
-  body: string;
-  image_url: string | null;
+  receiver_id: string;
+  content: string;
   created_at: string;
 };
 
-export async function fetchMyDirectMessages(
-  courseId: string,
-): Promise<DirectMessage[]> {
+export async function fetchPeerDisplayName(userId: string): Promise<string> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return pickDisplayName(
+    data?.full_name as string | null,
+    data?.email as string | null,
+  );
+}
+
+/** Thread between current user and peer (last 3 days). */
+export async function fetchPeerThread(
+  peerUserId: string,
+): Promise<PeerDirectMessage[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -22,27 +35,26 @@ export async function fetchMyDirectMessages(
   const since = daysAgoIso(RETENTION_DAYS);
   const { data, error } = await supabase
     .from("direct_messages")
-    .select("id, course_id, sender_id, sender_name, body, image_url, created_at")
-    .eq("course_id", courseId)
-    .eq("sender_id", user.id)
+    .select("id, sender_id, receiver_id, content, created_at")
+    .or(
+      `and(sender_id.eq.${user.id},receiver_id.eq.${peerUserId}),and(sender_id.eq.${peerUserId},receiver_id.eq.${user.id})`,
+    )
     .gte("created_at", since)
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("direct_messages fetch:", error);
+    console.error("peer DM fetch:", error);
     return [];
   }
 
-  return (data ?? []) as DirectMessage[];
+  return (data ?? []) as PeerDirectMessage[];
 }
 
-export async function sendDirectMessage(input: {
-  courseId: string;
-  body: string;
-  senderName?: string;
-  imageUrl?: string | null;
+export async function sendPeerMessage(input: {
+  receiverId: string;
+  content: string;
 }): Promise<
-  { ok: true; message: DirectMessage } | { ok: false; message: string }
+  { ok: true; message: PeerDirectMessage } | { ok: false; message: string }
 > {
   const {
     data: { user },
@@ -51,43 +63,29 @@ export async function sendDirectMessage(input: {
     return { ok: false, message: "login_required" };
   }
 
-  const body = input.body.trim();
-  if (!body && !input.imageUrl) {
+  const content = input.content.trim();
+  if (!content) {
     return { ok: false, message: "empty" };
   }
 
-  let senderName = input.senderName?.trim() || "";
-  if (!senderName) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, email")
-      .eq("id", user.id)
-      .maybeSingle();
-    senderName = pickDisplayName(
-      (profile?.full_name as string | null) ||
-        (typeof user.user_metadata?.full_name === "string"
-          ? user.user_metadata.full_name
-          : null),
-      (profile?.email as string | null) || user.email,
-    );
+  if (input.receiverId === user.id) {
+    return { ok: false, message: "self" };
   }
 
   const { data, error } = await supabase
     .from("direct_messages")
     .insert({
-      course_id: input.courseId,
       sender_id: user.id,
-      sender_name: senderName,
-      body: body || "(صورة)",
-      image_url: input.imageUrl?.trim() || null,
+      receiver_id: input.receiverId,
+      content,
     })
-    .select("id, course_id, sender_id, sender_name, body, image_url, created_at")
+    .select("id, sender_id, receiver_id, content, created_at")
     .single();
 
   if (error || !data) {
-    console.error("direct_messages insert:", error);
+    console.error("peer DM insert:", error);
     return { ok: false, message: "send_failed" };
   }
 
-  return { ok: true, message: data as DirectMessage };
+  return { ok: true, message: data as PeerDirectMessage };
 }

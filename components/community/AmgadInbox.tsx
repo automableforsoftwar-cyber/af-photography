@@ -5,10 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
-  fetchMyDirectMessages,
-  sendDirectMessage,
-  type DirectMessage,
-} from "@/lib/direct-messages";
+  fetchMyAmgadMessages,
+  sendAmgadMessage,
+  type AmgadMessage,
+} from "@/lib/amgad-messages";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
@@ -20,7 +20,7 @@ type AmgadInboxProps = {
 export function AmgadInbox({ courseId }: AmgadInboxProps) {
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
-  const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [messages, setMessages] = useState<AmgadMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await fetchMyDirectMessages(courseId);
+    const data = await fetchMyAmgadMessages(courseId);
     setMessages(data);
     setLoading(false);
   }, [courseId]);
@@ -58,7 +58,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
       imageUrl = up.publicUrl;
     }
 
-    const result = await sendDirectMessage({
+    const result = await sendAmgadMessage({
       courseId,
       body: draft,
       senderName,

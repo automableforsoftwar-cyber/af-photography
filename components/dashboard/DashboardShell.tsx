@@ -6,6 +6,7 @@ import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
 import { CommunityView } from "@/components/community/CommunityView";
+import { PeerDMChat } from "@/components/community/PeerDMChat";
 import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
 import { CourseRoom } from "@/components/dashboard/CourseRoom";
 import { CoursesHub } from "@/components/dashboard/CoursesHub";
@@ -31,11 +32,19 @@ type DashboardShellProps = {
     | "community"
     | "challenges"
     | "gallery"
-    | "account";
+    | "account"
+    | "messages";
   courseId?: string;
+  peerUserId?: string;
+  peerName?: string | null;
 };
 
-export function DashboardShell({ section, courseId }: DashboardShellProps) {
+export function DashboardShell({
+  section,
+  courseId,
+  peerUserId,
+  peerName,
+}: DashboardShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
@@ -62,8 +71,12 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
               const active =
                 item.href === "/dashboard"
                   ? pathname === "/dashboard"
-                  : pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
+                  : item.href === "/dashboard/community"
+                    ? pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`) ||
+                      pathname.startsWith("/dashboard/messages")
+                    : pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
@@ -138,6 +151,8 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <CompetitionPhotoVoting />
           ) : section === "gallery" ? (
             <DashboardGallery />
+          ) : section === "messages" && peerUserId ? (
+            <PeerDMChat peerUserId={peerUserId} peerNameHint={peerName} />
           ) : section === "account" ? (
             <AccountView />
           ) : null}

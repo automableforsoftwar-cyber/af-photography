@@ -7,6 +7,7 @@ export const DASHBOARD_PROTECTED_PREFIXES = [
   "/dashboard/challenges",
   "/dashboard/gallery",
   "/dashboard/account",
+  "/dashboard/messages",
 ] as const;
 
 /** After login — stay on the public homepage (no dashboard portal). */
