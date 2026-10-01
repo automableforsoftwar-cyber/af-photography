@@ -36,7 +36,6 @@ import {
 } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
-import { isStaffRole } from "@/lib/roles";
 import { pickDisplayName } from "@/lib/display-name";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -81,7 +80,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const email = useAuthStore((s) => s.email);
   const role = useAuthStore((s) => s.role);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const canModerate = isStaffRole(role) && !isBlocked;
+  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
+  const canModerate =
+    (role === "instructor" || role === "organizer") && !isBlocked;
   const [tab, setTab] = useState<TabId>("general");
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -114,6 +115,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Keep moderation tools in sync with live profiles.role / title
+  useEffect(() => {
+    void refreshProfileFlags();
+  }, [refreshProfileFlags]);
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
@@ -592,8 +598,10 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                   {formatMessageTime(message.created_at)}
                                 </span>
                               </p>
-                              <RoleBadge title={authorTitle} />
-                              {canModerate ? (
+                              {authorTitle ? (
+                                <RoleBadge title={authorTitle} />
+                              ) : null}
+                              {role === "instructor" || role === "organizer" ? (
                                 <button
                                   type="button"
                                   onClick={() =>

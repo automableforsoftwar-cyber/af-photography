@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import {
   fetchAdminAnalytics,
   fetchAllProfilesForAdmin,
+  fetchMyProfileFlags,
   setUserBlocked,
   type AdminAnalytics,
 } from "@/lib/moderation";
@@ -31,16 +32,15 @@ function StatCard({
 
 export function AdminDashboard() {
   const router = useRouter();
-  const role = useAuthStore((s) => s.role);
-  const isBlocked = useAuthStore((s) => s.isBlocked);
   const userId = useAuthStore((s) => s.userId);
+  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [allowed, setAllowed] = useState(false);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [users, setUsers] = useState<ProfileModeration[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  const allowed = isStaffRole(role) && !isBlocked;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,13 +53,26 @@ export function AdminDashboard() {
     setLoading(false);
   }, []);
 
+  // Always re-read role/title/is_blocked from profiles (not stale Zustand persist)
   useEffect(() => {
-    if (!allowed) {
-      router.replace("/dashboard/courses");
-      return;
-    }
-    void load();
-  }, [allowed, load, router]);
+    let cancelled = false;
+    void (async () => {
+      const flags = await fetchMyProfileFlags();
+      if (cancelled) return;
+      await refreshProfileFlags();
+      const ok = isStaffRole(flags.role) && !flags.isBlocked;
+      setAllowed(ok);
+      setAccessChecked(true);
+      if (!ok) {
+        router.replace("/dashboard/courses");
+        return;
+      }
+      await load();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load, refreshProfileFlags, router]);
 
   const toggleBlock = async (profile: ProfileModeration) => {
     if (profile.id === userId) {
@@ -81,11 +94,11 @@ export function AdminDashboard() {
     );
   };
 
-  if (!allowed) {
+  if (!accessChecked || !allowed) {
     return (
       <AuthGate>
         <div className="flex min-h-svh items-center justify-center bg-[#050505] text-sm text-slate-500">
-          بنحوّلك للوحة التحكم…
+          {accessChecked ? "بنحوّلك للوحة التحكم…" : "بنتحقق من الصلاحيات…"}
         </div>
       </AuthGate>
     );

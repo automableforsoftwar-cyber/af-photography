@@ -15,7 +15,6 @@ import {
 import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
-import { isStaffRole } from "@/lib/roles";
 
 export type ActiveChatUser = {
   userId: string;
@@ -42,7 +41,9 @@ export function DirectMessageDrawer({
   const myId = useAuthStore((s) => s.userId);
   const myRole = useAuthStore((s) => s.role);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const canModerate = isStaffRole(myRole) && !isBlocked;
+  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
+  const canModerate =
+    (myRole === "instructor" || myRole === "organizer") && !isBlocked;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
   const [peerTitle, setPeerTitle] = useState<string | null>(null);
@@ -71,7 +72,8 @@ export function DirectMessageDrawer({
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    void refreshProfileFlags();
+  }, [refreshProfileFlags]);
 
   // Fetch history once per peer open — never tied to parent re-renders.
   useEffect(() => {

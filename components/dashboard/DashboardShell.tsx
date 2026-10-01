@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
@@ -47,10 +48,15 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const email = useAuthStore((s) => s.email);
   const role = useAuthStore((s) => s.role);
   const isBlocked = useAuthStore((s) => s.isBlocked);
+  const refreshProfileFlags = useAuthStore((s) => s.refreshProfileFlags);
   const welcomeName = pickDisplayName(fullName, email);
   const showAdmin =
     (role === "instructor" || role === "organizer") && !isBlocked;
   const navItems = NAV.filter((item) => !item.staffOnly || showAdmin);
+
+  useEffect(() => {
+    void refreshProfileFlags();
+  }, [refreshProfileFlags]);
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
