@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import { fetchWinners, type CommunityPost } from "@/lib/community-posts";
 import { useAuthStore } from "@/lib/auth-store";
@@ -32,7 +33,7 @@ export function DashboardGallery() {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const [winners, setWinners] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,8 +45,6 @@ export function DashboardGallery() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const active = winners.find((w) => w.id === activeId) ?? null;
 
   return (
     <RtlScroll className="h-full pe-4">
@@ -84,7 +83,7 @@ export function DashboardGallery() {
                 type="button"
                 variants={item}
                 whileHover={{ scale: 1.02 }}
-                onClick={() => setActiveId(photo.id)}
+                onClick={() => setLightboxSrc(photo.image_url)}
                 className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-start backdrop-blur-xl"
               >
                 <div className="relative aspect-[4/3]">
@@ -119,45 +118,11 @@ export function DashboardGallery() {
         )}
       </section>
 
-      {active ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
-          onClick={() => setActiveId(null)}
-        >
-          <div
-            className="relative max-h-[85svh] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative aspect-[16/10] w-full">
-              <Image
-                src={active.image_url}
-                alt={active.description || active.title}
-                fill
-                className="object-cover"
-                sizes="90vw"
-                unoptimized
-              />
-            </div>
-            <div className="space-y-2 p-5">
-              <p className="text-xs font-medium text-yellow-400">الفائز</p>
-              <p className="font-display text-xl font-bold text-white">
-                {active.user_name || active.author_label || "فائز"}
-              </p>
-              <p className="text-sm leading-relaxed text-slate-300">
-                {active.description || active.title}
-              </p>
-              <p className="text-xs text-slate-500">{active.vote_count} صوت</p>
-              <button
-                type="button"
-                onClick={() => setActiveId(null)}
-                className="mt-2 rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200 hover:text-yellow-400"
-              >
-                قفل
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ImageLightbox
+        src={lightboxSrc}
+        alt="فائز"
+        onClose={() => setLightboxSrc(null)}
+      />
     </RtlScroll>
   );
 }

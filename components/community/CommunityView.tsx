@@ -1,20 +1,33 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { EmojiClickData } from "emoji-picker-react";
+import { Theme } from "emoji-picker-react";
 import { AmgadInbox } from "@/components/community/AmgadInbox";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
+  QUICK_REACTIONS,
   channels,
   fetchCourseMessages,
   formatMessageTime,
   sendCourseMessage,
+  toggleMessageReaction,
   type CourseChatMessage,
 } from "@/lib/course-community";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+  loading: () => (
+    <p className="p-3 text-xs text-slate-500">بنحمّل الإيموجي…</p>
+  ),
+});
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -56,6 +69,12 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<CourseChatMessage | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const reactPickerRef = useRef<HTMLDivElement>(null);
 
   const authorName = pickDisplayName(fullName, email);
 
@@ -79,6 +98,31 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setReplyTo(null);
+    setPickerOpen(false);
+    setReactPickerFor(null);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!pickerOpen && !reactPickerFor) return;
+    const onDoc = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (pickerOpen && pickerRef.current && !pickerRef.current.contains(target)) {
+        setPickerOpen(false);
+      }
+      if (
+        reactPickerFor &&
+        reactPickerRef.current &&
+        !reactPickerRef.current.contains(target)
+      ) {
+        setReactPickerFor(null);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [pickerOpen, reactPickerFor]);
+
   const send = async () => {
     if ((!draft.trim() && !file) || sending || !courseId) return;
     setSending(true);
@@ -101,6 +145,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       body: draft.trim() || "صورة",
       authorLabel: authorName,
       imageUrl: isPhotos || imageUrl ? imageUrl : null,
+      replyToId: replyTo?.id ?? null,
     });
     setSending(false);
     if (!result.ok) {
@@ -109,7 +154,28 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     }
     setDraft("");
     setFile(null);
+    setReplyTo(null);
+    setPickerOpen(false);
     setMessages((prev) => [...prev, result.message]);
+  };
+
+  const onReact = async (messageId: string, emoji: string) => {
+    const result = await toggleMessageReaction(messageId, emoji);
+    if (!result.ok) {
+      setNotice("مقدرناش نسجّل الريأكشن. حاول تاني.");
+      return;
+    }
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, reactions: result.reactions } : m,
+      ),
+    );
+    setReactPickerFor(null);
+  };
+
+  const onEmojiPick = (data: EmojiClickData) => {
+    setDraft((prev) => prev + data.emoji);
+    setPickerOpen(false);
   };
 
   if (!courseId) {
@@ -194,12 +260,16 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                       const mine = message.user_id === userId;
                       const label =
                         message.author_label || (mine ? "إنت" : "عضو");
+                      const reactionEntries = Object.entries(
+                        message.reactions ?? {},
+                      ).filter(([, users]) => users.length > 0);
+
                       return (
                         <motion.article
                           key={message.id}
                           variants={item}
                           layout
-                          className={`flex flex-row gap-3 rounded-xl px-4 py-3 text-right ${
+                          className={`group relative flex flex-row gap-3 rounded-xl px-4 py-3 text-right ${
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
                         >
@@ -215,11 +285,31 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                 {formatMessageTime(message.created_at)}
                               </span>
                             </p>
+
+                            {message.reply_to ? (
+                              <div className="mt-2 rounded-lg border-s-2 border-yellow-400/50 bg-white/5 px-3 py-2 text-right">
+                                <p className="text-[0.65rem] font-medium text-yellow-400/90">
+                                  رد على{" "}
+                                  {message.reply_to.author_label || "عضو"}
+                                </p>
+                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
+                                  {message.reply_to.body}
+                                </p>
+                              </div>
+                            ) : null}
+
                             <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
                               {message.body}
                             </p>
+
                             {message.image_url ? (
-                              <div className="relative mt-3 ms-auto aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLightboxSrc(message.image_url)
+                                }
+                                className="relative mt-3 ms-auto block aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40"
+                              >
                                 <Image
                                   src={message.image_url}
                                   alt=""
@@ -228,8 +318,83 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                   className="object-cover"
                                   unoptimized
                                 />
+                              </button>
+                            ) : null}
+
+                            {reactionEntries.length > 0 ? (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {reactionEntries.map(([emoji, users]) => {
+                                  const active =
+                                    !!userId && users.includes(userId);
+                                  return (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() =>
+                                        void onReact(message.id, emoji)
+                                      }
+                                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
+                                        active
+                                          ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-400"
+                                          : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                                      }`}
+                                    >
+                                      <span>{emoji}</span>
+                                      <span>{users.length}</span>
+                                    </button>
+                                  );
+                                })}
                               </div>
                             ) : null}
+
+                            <div className="mt-2 flex flex-wrap items-center gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => setReplyTo(message)}
+                                className="rounded-full border border-white/10 px-2.5 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
+                              >
+                                رد
+                              </button>
+                              {QUICK_REACTIONS.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() =>
+                                    void onReact(message.id, emoji)
+                                  }
+                                  className="rounded-full border border-transparent px-1.5 py-0.5 text-sm hover:border-white/15 hover:bg-white/5"
+                                  aria-label={`تفاعل ${emoji}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                              <div className="relative" ref={reactPickerFor === message.id ? reactPickerRef : undefined}>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReactPickerFor((id) =>
+                                      id === message.id ? null : message.id,
+                                    )
+                                  }
+                                  className="rounded-full border border-white/10 px-2 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
+                                >
+                                  +
+                                </button>
+                                {reactPickerFor === message.id ? (
+                                  <div className="absolute bottom-full end-0 z-20 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+                                    <EmojiPicker
+                                      theme={Theme.DARK}
+                                      height={320}
+                                      width={300}
+                                      searchPlaceHolder="بحث…"
+                                      onEmojiClick={(data) =>
+                                        void onReact(message.id, data.emoji)
+                                      }
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
                         </motion.article>
                       );
@@ -252,7 +417,29 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                   {notice}
                 </p>
               ) : null}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md focus-within:border-yellow-400/35">
+
+              {replyTo ? (
+                <div className="mb-2 flex items-start justify-between gap-3 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-3 py-2 text-right">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.65rem] font-medium text-yellow-400">
+                      رد على {replyTo.author_label || "عضو"}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-300">
+                      {replyTo.body}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTo(null)}
+                    className="shrink-0 text-xs text-slate-400 hover:text-white"
+                    aria-label="إلغاء الرد"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md focus-within:border-yellow-400/35">
                 <textarea
                   rows={2}
                   value={draft}
@@ -264,9 +451,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                     }
                   }}
                   placeholder={
-                    isPhotos
-                      ? "وصف الفريم أو تعليق…"
-                      : `رسالة إلى ${channelLabel(activeChannel?.name ?? "")}`
+                    replyTo
+                      ? `رد على ${replyTo.author_label || "الرسالة"}…`
+                      : isPhotos
+                        ? "وصف الفريم أو تعليق…"
+                        : `رسالة إلى ${channelLabel(activeChannel?.name ?? "")}`
                   }
                   className="w-full resize-none bg-transparent text-right text-sm leading-relaxed text-white outline-none placeholder:text-slate-500"
                 />
@@ -278,21 +467,51 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                   >
                     {sending ? "…" : "ابعت"}
                   </button>
-                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400">
-                    {file ? file.name : "ارفع من جهازك"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative" ref={pickerRef}>
+                      <button
+                        type="button"
+                        onClick={() => setPickerOpen((o) => !o)}
+                        className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400"
+                        aria-label="إيموجي"
+                      >
+                        😊
+                      </button>
+                      {pickerOpen ? (
+                        <div className="absolute bottom-full start-0 z-30 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+                          <EmojiPicker
+                            theme={Theme.DARK}
+                            height={360}
+                            width={320}
+                            searchPlaceHolder="بحث…"
+                            onEmojiClick={onEmojiPick}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                    <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400">
+                      {file ? file.name : "ارفع من جهازك"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          setFile(e.target.files?.[0] ?? null)
+                        }
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
             </form>
           </>
         )}
       </section>
+
+      <ImageLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
   fetchCommunityPosts,
   uploadCommunityPost,
@@ -49,6 +50,7 @@ export function CompetitionPhotoVoting() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const displayName = pickDisplayName(fullName, email);
 
@@ -199,16 +201,20 @@ export function CompetitionPhotoVoting() {
                   whileHover={{ scale: 1.02 }}
                   className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
                 >
-                  <div className="relative aspect-[4/3]">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(entry.image_url)}
+                    className="relative aspect-[4/3] w-full overflow-hidden text-start"
+                  >
                     <Image
                       src={entry.image_url}
                       alt={entry.description || entry.title}
                       fill
                       sizes="(max-width: 640px) 100vw, 40vw"
-                      className="object-cover"
+                      className="object-cover transition hover:scale-[1.02]"
                       unoptimized
                     />
-                  </div>
+                  </button>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
                       <p className="truncate font-medium text-white">
@@ -273,6 +279,11 @@ export function CompetitionPhotoVoting() {
           </ol>
         </div>
       </aside>
+
+      <ImageLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
   fetchMyDirectMessages,
@@ -25,6 +26,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const senderName = pickDisplayName(fullName, email);
 
@@ -100,7 +102,11 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
                     {m.body}
                   </p>
                   {m.image_url ? (
-                    <div className="relative mt-3 ms-auto aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxSrc(m.image_url)}
+                      className="relative mt-3 ms-auto block aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-white/10"
+                    >
                       <Image
                         src={m.image_url}
                         alt=""
@@ -108,7 +114,7 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
                         className="object-cover"
                         unoptimized
                       />
-                    </div>
+                    </button>
                   ) : null}
                 </article>
               </li>
@@ -154,6 +160,11 @@ export function AmgadInbox({ courseId }: AmgadInboxProps) {
           </label>
         </div>
       </form>
+
+      <ImageLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 }

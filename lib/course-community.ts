@@ -1,6 +1,9 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
 import { supabase } from "@/lib/supabase";
 
+/** emoji → list of user ids who reacted */
+export type MessageReactions = Record<string, string[]>;
+
 export type CourseChatMessage = {
   id: string;
   course_id: string;
@@ -10,6 +13,14 @@ export type CourseChatMessage = {
   body: string;
   image_url: string | null;
   created_at: string;
+  reply_to_id: string | null;
+  reactions: MessageReactions;
+  /** Resolved parent snippet for quote UI (client-side). */
+  reply_to?: {
+    id: string;
+    author_label: string | null;
+    body: string;
+  } | null;
 };
 
 export type CommunityChannel = {
@@ -17,6 +28,9 @@ export type CommunityChannel = {
   name: string;
   topic: string;
 };
+
+const MESSAGE_SELECT =
+  "id, course_id, channel_id, user_id, author_label, body, image_url, created_at, reply_to_id, reactions";
 
 /** Course community — exactly two channels (isolated per course_id in DB). */
 export const channels: CommunityChannel[] = [
@@ -32,6 +46,36 @@ export const channels: CommunityChannel[] = [
   },
 ];
 
+export const QUICK_REACTIONS = ["👍", "❤️", "🔥", "😂", "👏"] as const;
+
+function normalizeReactions(raw: unknown): MessageReactions {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: MessageReactions = {};
+  for (const [emoji, users] of Object.entries(raw as Record<string, unknown>)) {
+    if (Array.isArray(users)) {
+      out[emoji] = users.filter((u): u is string => typeof u === "string");
+    }
+  }
+  return out;
+}
+
+function attachReplyParents(rows: CourseChatMessage[]): CourseChatMessage[] {
+  const byId = new Map(rows.map((m) => [m.id, m]));
+  return rows.map((m) => {
+    if (!m.reply_to_id) return { ...m, reply_to: null };
+    const parent = byId.get(m.reply_to_id);
+    if (!parent) return { ...m, reply_to: null };
+    return {
+      ...m,
+      reply_to: {
+        id: parent.id,
+        author_label: parent.author_label,
+        body: parent.body,
+      },
+    };
+  });
+}
+
 export async function fetchCourseMessages(input: {
   courseId: string;
   channelId: string;
@@ -39,9 +83,7 @@ export async function fetchCourseMessages(input: {
   const since = daysAgoIso(RETENTION_DAYS);
   const { data, error } = await supabase
     .from("course_messages")
-    .select(
-      "id, course_id, channel_id, user_id, author_label, body, image_url, created_at",
-    )
+    .select(MESSAGE_SELECT)
     .eq("course_id", input.courseId)
     .eq("channel_id", input.channelId)
     .gte("created_at", since)
@@ -52,7 +94,13 @@ export async function fetchCourseMessages(input: {
     return [];
   }
 
-  return (data ?? []) as CourseChatMessage[];
+  const rows = ((data ?? []) as CourseChatMessage[]).map((m) => ({
+    ...m,
+    reply_to_id: m.reply_to_id ?? null,
+    reactions: normalizeReactions(m.reactions),
+  }));
+
+  return attachReplyParents(rows);
 }
 
 async function resolveAuthorName(
@@ -81,6 +129,7 @@ export async function sendCourseMessage(input: {
   body: string;
   authorLabel?: string;
   imageUrl?: string | null;
+  replyToId?: string | null;
 }): Promise<
   { ok: true; message: CourseChatMessage } | { ok: false; message: string }
 > {
@@ -111,10 +160,10 @@ export async function sendCourseMessage(input: {
       author_label: authorLabel,
       body,
       image_url: input.imageUrl?.trim() || null,
+      reply_to_id: input.replyToId || null,
+      reactions: {},
     })
-    .select(
-      "id, course_id, channel_id, user_id, author_label, body, image_url, created_at",
-    )
+    .select(MESSAGE_SELECT)
     .single();
 
   if (error || !data) {
@@ -122,7 +171,85 @@ export async function sendCourseMessage(input: {
     return { ok: false, message: "send_failed" };
   }
 
-  return { ok: true, message: data as CourseChatMessage };
+  const message: CourseChatMessage = {
+    ...(data as CourseChatMessage),
+    reactions: normalizeReactions((data as CourseChatMessage).reactions),
+    reply_to: null,
+  };
+
+  if (message.reply_to_id) {
+    const { data: parent } = await supabase
+      .from("course_messages")
+      .select("id, author_label, body")
+      .eq("id", message.reply_to_id)
+      .maybeSingle();
+    if (parent) {
+      message.reply_to = {
+        id: parent.id as string,
+        author_label: parent.author_label as string | null,
+        body: parent.body as string,
+      };
+    }
+  }
+
+  return { ok: true, message };
+}
+
+/** Toggle an emoji reaction for the current user on a message. */
+export async function toggleMessageReaction(
+  messageId: string,
+  emoji: string,
+): Promise<
+  | { ok: true; reactions: MessageReactions }
+  | { ok: false; message: string }
+> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, message: "login_required" };
+  }
+
+  const clean = emoji.trim();
+  if (!clean) return { ok: false, message: "empty" };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("course_messages")
+    .select("reactions")
+    .eq("id", messageId)
+    .maybeSingle();
+
+  if (fetchError || !row) {
+    console.error("reactions fetch:", fetchError);
+    return { ok: false, message: "not_found" };
+  }
+
+  const current = normalizeReactions(row.reactions);
+  const users = new Set(current[clean] ?? []);
+  if (users.has(user.id)) {
+    users.delete(user.id);
+  } else {
+    users.add(user.id);
+  }
+
+  const next: MessageReactions = { ...current };
+  if (users.size === 0) {
+    delete next[clean];
+  } else {
+    next[clean] = Array.from(users);
+  }
+
+  const { error: updateError } = await supabase
+    .from("course_messages")
+    .update({ reactions: next })
+    .eq("id", messageId);
+
+  if (updateError) {
+    console.error("reactions update:", updateError);
+    return { ok: false, message: "update_failed" };
+  }
+
+  return { ok: true, reactions: next };
 }
 
 export function formatMessageTime(iso: string): string {
