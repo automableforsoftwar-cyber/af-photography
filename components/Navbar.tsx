@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
+import { SocialIconLinks } from "@/components/SocialIconLinks";
 import { navLinks, site } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
@@ -75,7 +76,8 @@ export function Navbar() {
           ))}
         </ul>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
             <>
               <a
@@ -170,6 +172,16 @@ export function Navbar() {
                     تسجيل دخول / إنشاء حساب
                   </button>
                 )}
+              </motion.li>
+              <motion.li
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.08 * (navLinks.length + 1),
+                  duration: 0.45,
+                }}
+              >
+                <SocialIconLinks />
               </motion.li>
             </ul>
           </motion.div>
