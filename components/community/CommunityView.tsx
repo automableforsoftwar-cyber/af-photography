@@ -7,7 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
 import { AmgadInbox } from "@/components/community/AmgadInbox";
-import { PeerDMDrawer } from "@/components/community/PeerDMDrawer";
+import {
+  DirectMessageDrawer,
+  type ActiveChatUser,
+} from "@/components/community/DirectMessageDrawer";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
@@ -80,10 +83,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
-  const [dmPeer, setDmPeer] = useState<{
-    userId: string;
-    name: string;
-  } | null>(null);
+  const [activeChatUser, setActiveChatUser] = useState<ActiveChatUser | null>(
+    null,
+  );
   const [conversations, setConversations] = useState<PeerConversation[]>([]);
   const [unreadSenders, setUnreadSenders] = useState<Set<string>>(new Set());
   const [liveIncoming, setLiveIncoming] = useState<PeerDirectMessage | null>(
@@ -91,11 +93,22 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   );
   const pickerRef = useRef<HTMLDivElement>(null);
   const reactPickerRef = useRef<HTMLDivElement>(null);
-  const dmPeerRef = useRef(dmPeer);
-  dmPeerRef.current = dmPeer;
+  const activeChatUserRef = useRef(activeChatUser);
+  activeChatUserRef.current = activeChatUser;
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
+
+  // Strip legacy ?dm= / ?name= from the URL without using them (no router navigation).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("dm") && !url.searchParams.has("name")) return;
+    url.searchParams.delete("dm");
+    url.searchParams.delete("name");
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", next);
+  }, []);
 
   const refreshConversations = useCallback(async () => {
     if (!userId) {
@@ -113,14 +126,14 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const openPeerDm = useCallback((peerUserId: string, name: string) => {
     if (!peerUserId) return;
     setLiveIncoming(null);
-    setDmPeer((prev) => {
+    setActiveChatUser((prev) => {
       if (prev?.userId === peerUserId && prev.name === name) return prev;
       return { userId: peerUserId, name };
     });
   }, []);
 
   const handleDmClose = useCallback(() => {
-    setDmPeer(null);
+    setActiveChatUser(null);
     setLiveIncoming(null);
     void refreshConversations();
   }, [refreshConversations]);
@@ -168,7 +181,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     return subscribeIncomingPeerMessages({
       userId,
       onInsert: (message) => {
-        const openPeer = dmPeerRef.current;
+        const openPeer = activeChatUserRef.current;
         if (openPeer && openPeer.userId === message.sender_id) {
           setLiveIncoming(message);
           setUnreadSenders((prev) => {
@@ -361,7 +374,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           ) : (
             <ul className="max-h-48 space-y-1 overflow-y-auto lg:max-h-64">
               {conversations.map((c) => {
-                const active = dmPeer?.userId === c.peerUserId;
+                const active = activeChatUser?.userId === c.peerUserId;
                 const unread = unreadSenders.has(c.peerUserId) || c.unread;
                 return (
                   <li key={c.peerUserId}>
@@ -709,14 +722,14 @@ export function CommunityView({ courseId }: CommunityViewProps) {
         onClose={() => setLightboxSrc(null)}
       />
 
-      <PeerDMDrawer
-        open={Boolean(dmPeer)}
-        peerUserId={dmPeer?.userId ?? null}
-        peerNameHint={dmPeer?.name}
-        incomingMessage={liveIncoming}
-        onClose={handleDmClose}
-        onOpenedPeer={handleOpenedPeer}
-      />
+      {activeChatUser ? (
+        <DirectMessageDrawer
+          user={activeChatUser}
+          onClose={handleDmClose}
+          incomingMessage={liveIncoming}
+          onOpenedPeer={handleOpenedPeer}
+        />
+      ) : null}
     </div>
   );
 }

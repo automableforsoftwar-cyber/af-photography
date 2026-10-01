@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy DM URL — chats open as a slide-over inside المجتمع (no query routing). */
+/** Legacy DM routes removed — private chats are a React state drawer only. */
 export default function PeerMessagesRedirectPage() {
   redirect("/dashboard/community");
 }
