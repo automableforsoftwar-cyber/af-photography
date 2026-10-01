@@ -113,7 +113,30 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const openPeerDm = useCallback((peerUserId: string, name: string) => {
     if (!peerUserId) return;
     setLiveIncoming(null);
-    setDmPeer({ userId: peerUserId, name });
+    setDmPeer((prev) => {
+      if (prev?.userId === peerUserId && prev.name === name) return prev;
+      return { userId: peerUserId, name };
+    });
+  }, []);
+
+  const handleDmClose = useCallback(() => {
+    setDmPeer(null);
+    setLiveIncoming(null);
+    void refreshConversations();
+  }, [refreshConversations]);
+
+  const handleOpenedPeer = useCallback((peerId: string) => {
+    setUnreadSenders((prev) => {
+      if (!prev.has(peerId)) return prev;
+      const next = new Set(prev);
+      next.delete(peerId);
+      return next;
+    });
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.peerUserId === peerId ? { ...c, unread: false } : c,
+      ),
+    );
   }, []);
 
   const channelId = tab === "photos" ? "photos" : "general";
@@ -154,7 +177,18 @@ export function CommunityView({ courseId }: CommunityViewProps) {
             next.delete(message.sender_id);
             return next;
           });
-          void refreshConversations();
+          setConversations((prev) => {
+            const exists = prev.some((c) => c.peerUserId === message.sender_id);
+            if (!exists) {
+              void refreshConversations();
+              return prev;
+            }
+            return prev.map((c) =>
+              c.peerUserId === message.sender_id
+                ? { ...c, unread: false, lastMessageAt: message.created_at }
+                : c,
+            );
+          });
           return;
         }
         setUnreadSenders((prev) => {
@@ -162,7 +196,18 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           next.add(message.sender_id);
           return next;
         });
-        void refreshConversations();
+        setConversations((prev) => {
+          const exists = prev.some((c) => c.peerUserId === message.sender_id);
+          if (!exists) {
+            void refreshConversations();
+            return prev;
+          }
+          return prev.map((c) =>
+            c.peerUserId === message.sender_id
+              ? { ...c, unread: true, lastMessageAt: message.created_at }
+              : c,
+          );
+        });
       },
     });
   }, [userId, refreshConversations]);
@@ -669,20 +714,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
         peerUserId={dmPeer?.userId ?? null}
         peerNameHint={dmPeer?.name}
         incomingMessage={liveIncoming}
-        onClose={() => {
-          setDmPeer(null);
-          setLiveIncoming(null);
-          void refreshConversations();
-        }}
-        onOpenedPeer={(peerId) => {
-          setUnreadSenders((prev) => {
-            if (!prev.has(peerId)) return prev;
-            const next = new Set(prev);
-            next.delete(peerId);
-            return next;
-          });
-          void refreshConversations();
-        }}
+        onClose={handleDmClose}
+        onOpenedPeer={handleOpenedPeer}
       />
     </div>
   );

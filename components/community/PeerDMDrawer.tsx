@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
@@ -18,7 +18,7 @@ type PeerDMDrawerProps = {
   peerUserId: string | null;
   peerNameHint?: string | null;
   onClose: () => void;
-  /** Append incoming realtime message while this drawer is open for that peer. */
+  /** Append-only realtime payload (does not trigger history reload). */
   incomingMessage?: PeerDirectMessage | null;
   onOpenedPeer?: (peerUserId: string) => void;
 };
@@ -41,42 +41,90 @@ export function PeerDMDrawer({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const loadedPeerRef = useRef<string | null>(null);
+  const onOpenedPeerRef = useRef(onOpenedPeer);
+  const onCloseRef = useRef(onClose);
+  const peerNameHintRef = useRef(peerNameHint);
+
+  onOpenedPeerRef.current = onOpenedPeer;
+  onCloseRef.current = onClose;
+  peerNameHintRef.current = peerNameHint;
+
+  const isSelf = Boolean(myId && peerUserId && myId === peerUserId);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const isSelf = Boolean(myId && peerUserId && myId === peerUserId);
+  // Initial history fetch — ONLY when drawer opens or peer changes.
+  useEffect(() => {
+    if (!open || !peerUserId) {
+      loadedPeerRef.current = null;
+      return;
+    }
 
-  const load = useCallback(async () => {
-    if (!open || !peerUserId || isSelf) {
+    if (myId && peerUserId === myId) {
       setMessages([]);
       setLoading(false);
       return;
     }
+
+    // Same peer already loaded while open — do not refetch.
+    if (loadedPeerRef.current === peerUserId) return;
+
+    let cancelled = false;
+    loadedPeerRef.current = peerUserId;
     setLoading(true);
     setNotice(null);
-    await markPeerThreadRead(peerUserId);
-    onOpenedPeer?.(peerUserId);
-    const [thread, name] = await Promise.all([
-      fetchPeerThread(peerUserId),
-      fetchPeerDisplayName(peerUserId),
-    ]);
-    setMessages(thread);
-    if (name && name !== "عضو") setPeerName(name);
-    else if (peerNameHint?.trim()) setPeerName(peerNameHint.trim());
-    setLoading(false);
-  }, [open, peerUserId, peerNameHint, isSelf, onOpenedPeer]);
+    setDraft("");
+    // Keep previous messages visible until new thread arrives (avoid empty flash).
+
+    void (async () => {
+      try {
+        await markPeerThreadRead(peerUserId);
+        if (!cancelled) onOpenedPeerRef.current?.(peerUserId);
+
+        const [thread, name] = await Promise.all([
+          fetchPeerThread(peerUserId),
+          fetchPeerDisplayName(peerUserId),
+        ]);
+        if (cancelled) return;
+
+        setMessages(thread);
+        const hint = peerNameHintRef.current?.trim();
+        if (name && name !== "عضو") setPeerName(name);
+        else if (hint) setPeerName(hint);
+      } catch (error) {
+        console.error("peer DM load:", error);
+        if (!cancelled) {
+          loadedPeerRef.current = null;
+          setNotice("مقدرناش نحمّل المحادثة.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, peerUserId, myId]);
+
+  // Reset loaded marker when drawer closes so next open refetches once.
+  useEffect(() => {
+    if (!open) {
+      loadedPeerRef.current = null;
+      lastIncomingId.current = null;
+    }
+  }, [open]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    if (peerNameHint?.trim()) setPeerName(peerNameHint.trim());
+    const hint = peerNameHint?.trim();
+    if (hint) setPeerName(hint);
   }, [peerNameHint, peerUserId]);
 
   useEffect(() => {
@@ -84,31 +132,35 @@ export function PeerDMDrawer({
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   useEffect(() => {
+    if (!open || loading) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, open]);
+  }, [messages.length, open, loading]);
 
+  // Realtime: append only — never toggle loading / never refetch history.
   useEffect(() => {
     if (!open || !peerUserId || !incomingMessage) return;
     if (incomingMessage.id === lastIncomingId.current) return;
     if (incomingMessage.sender_id !== peerUserId) return;
+
     lastIncomingId.current = incomingMessage.id;
     setMessages((prev) => {
       if (prev.some((m) => m.id === incomingMessage.id)) return prev;
       return [...prev, { ...incomingMessage, is_read: true }];
     });
-    void markPeerThreadRead(peerUserId);
-    onOpenedPeer?.(peerUserId);
-  }, [incomingMessage, open, peerUserId, onOpenedPeer]);
+    void markPeerThreadRead(peerUserId).then(() => {
+      onOpenedPeerRef.current?.(peerUserId);
+    });
+  }, [incomingMessage, open, peerUserId]);
 
   const send = async () => {
     if (!peerUserId || !draft.trim() || sending || isSelf) return;
@@ -124,7 +176,10 @@ export function PeerDMDrawer({
       return;
     }
     setDraft("");
-    setMessages((prev) => [...prev, result.message]);
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === result.message.id)) return prev;
+      return [...prev, result.message];
+    });
   };
 
   const initials = peerName.slice(0, 2) || "؟";
@@ -145,7 +200,7 @@ export function PeerDMDrawer({
             type="button"
             aria-label="قفل المحادثة"
             className="absolute inset-0 bg-black/55 backdrop-blur-sm"
-            onClick={onClose}
+            onClick={() => onCloseRef.current()}
           />
 
           <motion.aside
@@ -174,7 +229,7 @@ export function PeerDMDrawer({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => onCloseRef.current()}
                 className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:border-yellow-400/50 hover:text-yellow-400"
                 aria-label="قفل"
               >
@@ -189,7 +244,7 @@ export function PeerDMDrawer({
             ) : (
               <>
                 <RtlScroll className="min-h-0 flex-1 px-4 py-4">
-                  {loading ? (
+                  {loading && messages.length === 0 ? (
                     <p className="text-right text-sm text-slate-500">
                       بنحمّل المحادثة…
                     </p>
