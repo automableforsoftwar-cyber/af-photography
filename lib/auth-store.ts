@@ -4,7 +4,9 @@ import type { Session, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { fetchUnlockedCourseIds, signOutSession } from "@/lib/enroll";
+import { fetchMyProfileFlags } from "@/lib/moderation";
 import { clearAuthCookies, syncAuthCookies } from "@/lib/routing";
+import { isStaffRole, type UserRole } from "@/lib/roles";
 import { supabase } from "@/lib/supabase";
 
 function pushCookies(state: {
@@ -31,6 +33,9 @@ type AuthState = {
   userId: string | null;
   email: string;
   fullName: string;
+  role: UserRole;
+  title: string | null;
+  isBlocked: boolean;
   unlockedCourseIds: string[];
   activeCourseId: string | null;
   login: (payload: {
@@ -39,12 +44,17 @@ type AuthState = {
     fullName?: string;
     unlockedCourseIds?: string[];
     activeCourseId?: string | null;
+    role?: UserRole;
+    title?: string | null;
+    isBlocked?: boolean;
   }) => void;
   setActiveCourseId: (courseId: string | null) => void;
   addUnlockedCourse: (courseId: string) => void;
   hasCourse: (courseId: string) => boolean;
+  isStaff: () => boolean;
   hydrateFromSession: (session: Session | null) => Promise<void>;
   refreshCourses: () => Promise<void>;
+  refreshProfileFlags: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -55,14 +65,29 @@ export const useAuthStore = create<AuthState>()(
       userId: null,
       email: "",
       fullName: "",
+      role: "student",
+      title: null,
+      isBlocked: false,
       unlockedCourseIds: [],
       activeCourseId: null,
-      login: ({ userId, email, fullName, unlockedCourseIds, activeCourseId }) => {
+      login: ({
+        userId,
+        email,
+        fullName,
+        unlockedCourseIds,
+        activeCourseId,
+        role,
+        title,
+        isBlocked,
+      }) => {
         const next = {
           isLoggedIn: true as const,
           userId,
           email: email.trim().toLowerCase(),
           fullName: (fullName ?? get().fullName).trim(),
+          role: role ?? get().role,
+          title: title !== undefined ? title : get().title,
+          isBlocked: isBlocked ?? get().isBlocked,
           unlockedCourseIds: unlockedCourseIds ?? get().unlockedCourseIds,
           activeCourseId:
             activeCourseId !== undefined
@@ -87,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
         pushCookies(next);
       },
       hasCourse: (courseId) => get().unlockedCourseIds.includes(courseId),
+      isStaff: () => isStaffRole(get().role) && !get().isBlocked,
       hydrateFromSession: async (session) => {
         if (!session?.user) {
           const cleared = {
@@ -94,6 +120,9 @@ export const useAuthStore = create<AuthState>()(
             userId: null,
             email: "",
             fullName: "",
+            role: "student" as const,
+            title: null,
+            isBlocked: false,
             unlockedCourseIds: [] as string[],
             activeCourseId: null,
           };
@@ -103,13 +132,16 @@ export const useAuthStore = create<AuthState>()(
         }
 
         const user = session.user as User;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, full_name")
-          .eq("id", user.id)
-          .maybeSingle();
+        const [{ data: profile }, unlocked, flags] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("email, full_name, role, title, is_blocked")
+            .eq("id", user.id)
+            .maybeSingle(),
+          fetchUnlockedCourseIds(user.id),
+          fetchMyProfileFlags(),
+        ]);
 
-        const unlocked = await fetchUnlockedCourseIds(user.id);
         const prevActive = get().activeCourseId;
         const activeCourseId =
           prevActive && unlocked.includes(prevActive)
@@ -126,6 +158,9 @@ export const useAuthStore = create<AuthState>()(
           userId: user.id,
           email: profile?.email ?? user.email ?? get().email,
           fullName,
+          role: flags.role,
+          title: flags.title,
+          isBlocked: flags.isBlocked,
           unlockedCourseIds: unlocked,
           activeCourseId,
         };
@@ -151,6 +186,14 @@ export const useAuthStore = create<AuthState>()(
         });
         pushCookies(next);
       },
+      refreshProfileFlags: async () => {
+        const flags = await fetchMyProfileFlags();
+        set({
+          role: flags.role,
+          title: flags.title,
+          isBlocked: flags.isBlocked,
+        });
+      },
       logout: async () => {
         await signOutSession();
         const cleared = {
@@ -158,6 +201,9 @@ export const useAuthStore = create<AuthState>()(
           userId: null,
           email: "",
           fullName: "",
+          role: "student" as const,
+          title: null,
+          isBlocked: false,
           unlockedCourseIds: [] as string[],
           activeCourseId: null,
         };
@@ -166,13 +212,16 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "af-academy-auth-v5",
+      name: "af-academy-auth-v6",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,
         userId: state.userId,
         email: state.email,
         fullName: state.fullName,
+        role: state.role,
+        title: state.title,
+        isBlocked: state.isBlocked,
         unlockedCourseIds: state.unlockedCourseIds,
         activeCourseId: state.activeCourseId,
       }),

@@ -14,12 +14,13 @@ import { useAuthStore } from "@/lib/auth-store";
 import { site } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
 
-const NAV: { href: string; label: string }[] = [
+const NAV: { href: string; label: string; staffOnly?: boolean }[] = [
   { href: "/", label: "الرئيسية" },
   { href: "/dashboard/courses", label: "الكورسات" },
   { href: "/dashboard/community", label: "المجتمع" },
   { href: "/dashboard/challenges", label: "المسابقات" },
   { href: "/dashboard/gallery", label: "معرض الفائزين" },
+  { href: "/dashboard/admin", label: "الإدارة", staffOnly: true },
   { href: "/dashboard/account", label: "حسابك" },
 ];
 
@@ -31,7 +32,8 @@ type DashboardShellProps = {
     | "community"
     | "challenges"
     | "gallery"
-    | "account";
+    | "account"
+    | "admin";
   courseId?: string;
 };
 
@@ -43,7 +45,12 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
+  const role = useAuthStore((s) => s.role);
+  const isBlocked = useAuthStore((s) => s.isBlocked);
   const welcomeName = pickDisplayName(fullName, email);
+  const showAdmin =
+    (role === "instructor" || role === "organizer") && !isBlocked;
+  const navItems = NAV.filter((item) => !item.staffOnly || showAdmin);
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
@@ -58,7 +65,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-3"
         >
           <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:gap-x-5 sm:px-6 sm:py-3">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const active =
                 item.href === "/dashboard"
                   ? pathname === "/dashboard"

@@ -1,4 +1,5 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
+import { fetchMyProfileFlags } from "@/lib/moderation";
 import { supabase } from "@/lib/supabase";
 
 /** Amgad course inbox (renamed table; not peer DMs). */
@@ -50,6 +51,11 @@ export async function sendAmgadMessage(input: {
   } = await supabase.auth.getUser();
   if (!user) {
     return { ok: false, message: "login_required" };
+  }
+
+  const flags = await fetchMyProfileFlags();
+  if (flags.isBlocked) {
+    return { ok: false, message: "blocked" };
   }
 
   const body = input.body.trim();

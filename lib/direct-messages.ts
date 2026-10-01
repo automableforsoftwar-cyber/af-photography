@@ -1,4 +1,5 @@
 import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name";
+import { fetchMyProfileFlags } from "@/lib/moderation";
 import { toCommunityImagePublicUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -201,6 +202,11 @@ export async function sendPeerMessage(input: {
   } = await supabase.auth.getUser();
   if (!user) {
     return { ok: false, message: "login_required" };
+  }
+
+  const flags = await fetchMyProfileFlags();
+  if (flags.isBlocked) {
+    return { ok: false, message: "blocked" };
   }
 
   const content = (input.content ?? "").trim();

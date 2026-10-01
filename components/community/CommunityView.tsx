@@ -10,6 +10,8 @@ import {
   DirectMessageDrawer,
   type ActiveChatUser,
 } from "@/components/community/DirectMessageDrawer";
+import { MemberActionMenu } from "@/components/community/MemberActionMenu";
+import { RoleBadge } from "@/components/community/RoleBadge";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
@@ -27,8 +29,14 @@ import {
   type PeerConversation,
   type PeerDirectMessage,
 } from "@/lib/direct-messages";
+import {
+  deleteCourseMessage,
+  fetchProfilesByIds,
+  setUserBlocked,
+} from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
+import { isStaffRole } from "@/lib/roles";
 import { pickDisplayName } from "@/lib/display-name";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -71,10 +79,17 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
+  const role = useAuthStore((s) => s.role);
+  const isBlocked = useAuthStore((s) => s.isBlocked);
+  const canModerate = isStaffRole(role) && !isBlocked;
   const [tab, setTab] = useState<TabId>("general");
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [messages, setMessages] = useState<CourseChatMessage[]>([]);
+  const [authorMeta, setAuthorMeta] = useState<
+    Record<string, { title: string | null; is_blocked: boolean }>
+  >({});
+  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -169,6 +184,13 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       channelId,
     });
     setMessages(data);
+    const meta = await fetchProfilesByIds(data.map((m) => m.user_id));
+    const next: Record<string, { title: string | null; is_blocked: boolean }> =
+      {};
+    meta.forEach((value, key) => {
+      next[key] = { title: value.title, is_blocked: value.is_blocked };
+    });
+    setAuthorMeta(next);
     setLoading(false);
   }, [courseId, channelId, tab]);
 
@@ -255,6 +277,10 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   }, [pickerOpen, reactPickerFor]);
 
   const send = async () => {
+    if (isBlocked) {
+      setNotice("حسابك محظور — مينفعش تبعت رسائل.");
+      return;
+    }
     if ((!draft.trim() && !file) || sending || !courseId) return;
     setSending(true);
     setNotice(null);
@@ -280,7 +306,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     });
     setSending(false);
     if (!result.ok) {
-      setNotice("مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.");
+      setNotice(
+        result.message === "blocked"
+          ? "حسابك محظور — مينفعش تبعت رسائل."
+          : "مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.",
+      );
       return;
     }
     setDraft("");
@@ -288,6 +318,34 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     setReplyTo(null);
     setPickerOpen(false);
     setMessages((prev) => [...prev, result.message]);
+  };
+
+  const onDeleteMessage = async (messageId: string) => {
+    if (!canModerate) return;
+    const result = await deleteCourseMessage(messageId);
+    if (!result.ok) {
+      setNotice("مقدرناش نمسح الرسالة.");
+      return;
+    }
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  };
+
+  const onBlockUser = async (targetUserId: string) => {
+    if (!canModerate || !targetUserId || targetUserId === userId) return;
+    const result = await setUserBlocked(targetUserId, true);
+    if (!result.ok) {
+      setNotice("مقدرناش نحظر المستخدم.");
+      return;
+    }
+    setAuthorMeta((prev) => ({
+      ...prev,
+      [targetUserId]: {
+        title: prev[targetUserId]?.title ?? null,
+        is_blocked: true,
+      },
+    }));
+    setNotice("تم حظر المستخدم.");
+    setMenuFor(null);
   };
 
   const onReact = async (messageId: string, emoji: string) => {
@@ -454,6 +512,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                       };
 
                       const hasUnread = unreadSenders.has(message.user_id);
+                      const authorTitle = authorMeta[message.user_id]?.title ?? null;
                       const trimmedBody = (message.body ?? "").trim();
                       const showText =
                         trimmedBody.length > 0 &&
@@ -464,6 +523,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         replyBody.length > 0 &&
                         replyBody !== "صورة" &&
                         replyBody !== "(صورة)";
+                      const menuOpen = menuFor === message.id;
 
                       return (
                         <motion.article
@@ -474,40 +534,79 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
                         >
-                          <button
-                            type="button"
-                            onClick={openPeerDmFromMessage}
-                            disabled={mine}
-                            title={mine ? undefined : `رسالة إلى ${label}`}
-                            className={`relative flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400 ${
-                              mine
-                                ? "cursor-default"
-                                : "cursor-pointer transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
-                            }`}
-                          >
-                            {label.slice(0, 2)}
-                            {!mine && hasUnread ? (
-                              <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+                          <div className="relative shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (mine) return;
+                                setMenuFor((id) =>
+                                  id === message.id ? null : message.id,
+                                );
+                              }}
+                              disabled={mine}
+                              title={mine ? undefined : `رسالة إلى ${label}`}
+                              className={`relative flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400 ${
+                                mine
+                                  ? "cursor-default"
+                                  : "cursor-pointer transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
+                              }`}
+                            >
+                              {label.slice(0, 2)}
+                              {!mine && hasUnread ? (
+                                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+                              ) : null}
+                            </button>
+                            {!mine ? (
+                              <MemberActionMenu
+                                open={menuOpen}
+                                onClose={() => setMenuFor(null)}
+                                onMessage={openPeerDmFromMessage}
+                                canBlock={canModerate}
+                                onBlock={() =>
+                                  void onBlockUser(message.user_id)
+                                }
+                              />
                             ) : null}
-                          </button>
+                          </div>
                           <div className="min-w-0 flex-1 text-right">
-                            <p className="text-sm">
-                              <button
-                                type="button"
-                                onClick={openPeerDmFromMessage}
-                                disabled={mine}
-                                className={`font-medium ${
-                                  mine
-                                    ? "cursor-default text-white"
-                                    : "text-white transition hover:text-yellow-400 hover:underline"
-                                }`}
-                              >
-                                {label}
-                              </button>
-                              <span className="me-2 text-xs text-slate-500">
-                                {formatMessageTime(message.created_at)}
-                              </span>
-                            </p>
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <p className="text-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (mine) return;
+                                    setMenuFor((id) =>
+                                      id === message.id ? null : message.id,
+                                    );
+                                  }}
+                                  disabled={mine}
+                                  className={`font-medium ${
+                                    mine
+                                      ? "cursor-default text-white"
+                                      : "text-white transition hover:text-yellow-400 hover:underline"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                                <span className="me-2 text-xs text-slate-500">
+                                  {formatMessageTime(message.created_at)}
+                                </span>
+                              </p>
+                              <RoleBadge title={authorTitle} />
+                              {canModerate ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void onDeleteMessage(message.id)
+                                  }
+                                  className="rounded-full border border-red-400/20 px-2 py-0.5 text-[0.7rem] text-red-300/90 transition hover:border-red-400/50 hover:bg-red-500/10"
+                                  aria-label="حذف الرسالة"
+                                  title="حذف"
+                                >
+                                  🗑
+                                </button>
+                              ) : null}
+                            </div>
 
                             {message.reply_to ? (
                               <div className="mt-2 rounded-lg border-s-2 border-yellow-400/50 bg-white/5 px-3 py-2 text-right">
@@ -693,7 +792,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 <div className="mt-2 flex flex-row-reverse flex-wrap items-center justify-between gap-2">
                   <button
                     type="submit"
-                    disabled={sending || (!draft.trim() && !file)}
+                    disabled={
+                      sending || isBlocked || (!draft.trim() && !file)
+                    }
                     className="rounded-full bg-yellow-400 px-4 py-1.5 text-sm font-medium text-[#050505] disabled:opacity-35"
                   >
                     {sending ? "…" : "ابعت"}

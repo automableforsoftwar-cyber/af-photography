@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll } from "@/components/ui/RtlScroll";
+import { RoleBadge } from "@/components/community/RoleBadge";
 import {
   fetchPeerDisplayName,
   fetchPeerThread,
@@ -11,8 +12,10 @@ import {
   sendPeerMessage,
   type PeerDirectMessage,
 } from "@/lib/direct-messages";
+import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
+import { isStaffRole } from "@/lib/roles";
 
 export type ActiveChatUser = {
   userId: string;
@@ -37,8 +40,12 @@ export function DirectMessageDrawer({
   onOpenedPeer,
 }: DirectMessageDrawerProps) {
   const myId = useAuthStore((s) => s.userId);
+  const myRole = useAuthStore((s) => s.role);
+  const isBlocked = useAuthStore((s) => s.isBlocked);
+  const canModerate = isStaffRole(myRole) && !isBlocked;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
+  const [peerTitle, setPeerTitle] = useState<string | null>(null);
   const [messages, setMessages] = useState<PeerDirectMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -59,7 +66,7 @@ export function DirectMessageDrawer({
   onCloseRef.current = onClose;
 
   const isSelf = Boolean(myId && peerUserId === myId);
-  const canSend = Boolean(draft.trim() || file);
+  const canSend = Boolean((draft.trim() || file) && !isBlocked);
   const initials = peerName.slice(0, 2) || "؟";
 
   useEffect(() => {
@@ -87,14 +94,16 @@ export function DirectMessageDrawer({
       try {
         await markPeerThreadRead(peerUserId);
         if (!cancelled) onOpenedPeerRef.current?.(peerUserId);
-        const [thread, name] = await Promise.all([
+        const [thread, name, meta] = await Promise.all([
           fetchPeerThread(peerUserId),
           fetchPeerDisplayName(peerUserId),
+          fetchProfilesByIds([peerUserId]),
         ]);
         if (cancelled) return;
         setMessages(thread);
         if (name && name !== "عضو") setPeerName(name);
         else if (user.name?.trim()) setPeerName(user.name.trim());
+        setPeerTitle(meta.get(peerUserId)?.title ?? null);
       } catch (error) {
         console.error("DM drawer load:", error);
         if (!cancelled) {
@@ -152,6 +161,10 @@ export function DirectMessageDrawer({
 
   const send = async () => {
     if (!peerUserId || sending || isSelf) return;
+    if (isBlocked) {
+      setNotice("حسابك محظور — مينفعش تبعت رسائل.");
+      return;
+    }
     if (!draft.trim() && !file) return;
 
     setSending(true);
@@ -175,7 +188,11 @@ export function DirectMessageDrawer({
     });
     setSending(false);
     if (!result.ok) {
-      setNotice("مقدرناش نبعت الرسالة. حاول تاني.");
+      setNotice(
+        result.message === "blocked"
+          ? "حسابك محظور — مينفعش تبعت رسائل."
+          : "مقدرناش نبعت الرسالة. حاول تاني.",
+      );
       return;
     }
     setDraft("");
@@ -185,6 +202,16 @@ export function DirectMessageDrawer({
       if (prev.some((m) => m.id === result.message.id)) return prev;
       return [...prev, result.message];
     });
+  };
+
+  const blockPeer = async () => {
+    if (!canModerate || !peerUserId || peerUserId === myId) return;
+    const result = await setUserBlocked(peerUserId, true);
+    if (!result.ok) {
+      setNotice("مقدرناش نحظر المستخدم.");
+      return;
+    }
+    setNotice("تم حظر المستخدم.");
   };
 
   if (!mounted) return null;
@@ -213,19 +240,33 @@ export function DirectMessageDrawer({
             </span>
             <div className="min-w-0 text-right">
               <p className="text-[0.65rem] text-slate-500">رسالة خاصة</p>
-              <h2 className="font-display truncate text-base font-bold text-white">
-                {peerName}
-              </h2>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <h2 className="font-display truncate text-base font-bold text-white">
+                  {peerName}
+                </h2>
+                <RoleBadge title={peerTitle} />
+              </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onCloseRef.current()}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:border-yellow-400/50 hover:text-yellow-400"
-            aria-label="قفل"
-          >
-            ✕
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {canModerate && !isSelf ? (
+              <button
+                type="button"
+                onClick={() => void blockPeer()}
+                className="rounded-full border border-red-400/30 px-2.5 py-1 text-[0.7rem] text-red-300 transition hover:bg-red-500/10"
+              >
+                حظر المستخدم
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => onCloseRef.current()}
+              className="flex size-9 items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:border-yellow-400/50 hover:text-yellow-400"
+              aria-label="قفل"
+            >
+              ✕
+            </button>
+          </div>
         </header>
 
         {isSelf ? (
