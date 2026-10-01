@@ -273,7 +273,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     const result = await sendCourseMessage({
       courseId,
       channelId,
-      body: draft.trim() || "(صورة)",
+      body: draft.trim(),
       authorLabel: authorName,
       imageUrl,
       replyToId: replyTo?.id ?? null,
@@ -511,9 +511,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                               </div>
                             ) : null}
 
-                            <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
-                              {message.body}
-                            </p>
+                            {message.body?.trim() ? (
+                              <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                                {message.body}
+                              </p>
+                            ) : null}
 
                             {message.image_url ? (
                               <button

@@ -163,7 +163,7 @@ export async function sendCourseMessage(input: {
       channel_id: input.channelId,
       user_id: user.id,
       author_label: authorLabel,
-      body: body || "(صورة)",
+      body: body,
       image_url: imageUrl,
       reply_to_id: input.replyToId || null,
       reactions: {},
