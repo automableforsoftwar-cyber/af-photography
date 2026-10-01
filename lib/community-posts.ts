@@ -8,6 +8,7 @@ export type CommunityPost = {
   image_url: string;
   vote_count: number;
   created_at: string;
+  course_id?: string | null;
   voted?: boolean;
 };
 
@@ -16,10 +17,21 @@ export type PostSort = "newest" | "votes";
 export async function fetchCommunityPosts(
   userId?: string | null,
   sort: PostSort = "newest",
+  courseId?: string | null,
 ): Promise<CommunityPost[]> {
   let query = supabase
     .from("community_posts")
-    .select("id, user_id, title, author_label, image_url, vote_count, created_at");
+    .select(
+      "id, user_id, title, author_label, image_url, vote_count, created_at, course_id",
+    );
+
+  // Public FOMO gallery: only posts without a course_id
+  // Course-scoped: strict isolation by course_id
+  if (courseId) {
+    query = query.eq("course_id", courseId);
+  } else {
+    query = query.is("course_id", null);
+  }
 
   if (sort === "votes") {
     query = query
@@ -91,6 +103,7 @@ export async function uploadCommunityPost(input: {
   title: string;
   imageUrl: string;
   authorLabel?: string;
+  courseId?: string | null;
 }): Promise<{ ok: true; post: CommunityPost } | { ok: false; message: string }> {
   const {
     data: { user },
@@ -113,9 +126,10 @@ export async function uploadCommunityPost(input: {
       image_url: imageUrl,
       author_label: input.authorLabel?.trim() || null,
       vote_count: 0,
+      course_id: input.courseId ?? null,
     })
     .select(
-      "id, user_id, title, author_label, image_url, vote_count, created_at",
+      "id, user_id, title, author_label, image_url, vote_count, created_at, course_id",
     )
     .single();
 

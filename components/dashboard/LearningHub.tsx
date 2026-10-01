@@ -61,7 +61,13 @@ export function LearningHub({
               </div>
             )
           ) : panel === "community" ? (
-            <CommunityView />
+            course ? (
+              <CommunityView courseId={course.id} />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+                افتح كورس مفعّل أولاً.
+              </div>
+            )
           ) : panel === "inbox" ? (
             <InboxView />
           ) : panel === "challenges" ? (

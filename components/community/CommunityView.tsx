@@ -2,14 +2,16 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RtlScroll } from "@/components/ui/RtlScroll";
 import {
   channels,
-  getAuthor,
-  getSeedMessages,
-} from "@/lib/community";
-import { useWorkspaceStore } from "@/lib/workspace-store";
+  fetchCourseMessages,
+  formatMessageTime,
+  sendCourseMessage,
+  type CourseChatMessage,
+} from "@/lib/course-community";
+import { useAuthStore } from "@/lib/auth-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -34,59 +36,82 @@ function channelLabel(name: string) {
   return `#${name}`;
 }
 
-function PersonAvatar({ id }: { id: string }) {
-  const author = getAuthor(id);
-  if (author.avatar) {
-    return (
-      <span className="relative size-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5">
-        <Image
-          src={author.avatar}
-          alt=""
-          fill
-          sizes="36px"
-          className="object-cover"
-        />
-      </span>
-    );
-  }
-  return (
-    <span
-      className={`flex size-9 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-medium text-white ${author.color}`}
-    >
-      {author.initials}
-    </span>
-  );
-}
+type CommunityViewProps = {
+  /** Strict isolation key — messages only for this course_id */
+  courseId: string;
+};
 
-export function CommunityView() {
-  const activeId = useWorkspaceStore((state) => state.communityActiveId);
-  const draft = useWorkspaceStore((state) => state.communityDraft);
-  const sent = useWorkspaceStore((state) => state.communitySent);
-  const setActiveId = useWorkspaceStore((state) => state.setCommunityActiveId);
-  const setDraft = useWorkspaceStore((state) => state.setCommunityDraft);
-  const sendCommunity = useWorkspaceStore((state) => state.sendCommunity);
+export function CommunityView({ courseId }: CommunityViewProps) {
+  const userId = useAuthStore((s) => s.userId);
+  const email = useAuthStore((s) => s.email);
+  const [activeId, setActiveId] = useState(channels[0]?.id ?? "general");
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState<CourseChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
 
-  const safeActive =
-    channels.some((c) => c.id === activeId) ? activeId : channels[0]?.id ?? "general";
+  const safeActive = channels.some((c) => c.id === activeId)
+    ? activeId
+    : (channels[0]?.id ?? "general");
   const activeChannel =
     channels.find((channel) => channel.id === safeActive) ?? channels[0];
   const isPhotos = activeChannel?.id === "photos";
 
-  const messages = useMemo(() => {
-    const seeded = getSeedMessages(safeActive);
-    const extra = sent[safeActive] ?? [];
-    return [...seeded, ...extra];
-  }, [safeActive, sent]);
+  const load = useCallback(async () => {
+    if (!courseId) return;
+    setLoading(true);
+    const data = await fetchCourseMessages({
+      courseId,
+      channelId: safeActive,
+    });
+    setMessages(data);
+    setLoading(false);
+  }, [courseId, safeActive]);
 
-  const send = () => sendCommunity(safeActive, draft);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const send = async () => {
+    if (!draft.trim() || sending || !courseId) return;
+    setSending(true);
+    setNotice(null);
+    const result = await sendCourseMessage({
+      courseId,
+      channelId: safeActive,
+      body: draft,
+      authorLabel: email.split("@")[0] || "عضو",
+      imageUrl: isPhotos ? pendingImageUrl : null,
+    });
+    setSending(false);
+    if (!result.ok) {
+      setNotice("مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.");
+      return;
+    }
+    setDraft("");
+    setPendingImageUrl(null);
+    setMessages((prev) => [...prev, result.message]);
+  };
+
+  if (!courseId) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+        اختار كورس مفعّل عشان تدخل مجتمع المسار.
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex-row">
       <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-e">
         <div className="border-b border-white/10 px-4 py-4">
-          <p className="text-sm font-medium text-white">المجتمع</p>
-          <p className="mt-0.5 text-xs text-slate-500">قناتان داخل الكورس</p>
+          <p className="text-sm font-medium text-white">مجتمع الكورس</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            معزول لهذا المسار فقط · الرسائل محفوظة
+          </p>
         </div>
         <ul className="space-y-1 p-3">
           {channels.map((channel) => {
@@ -119,65 +144,78 @@ export function CommunityView() {
         </header>
 
         <RtlScroll className="min-h-0 flex-1">
-          <motion.div
-            key={safeActive}
-            variants={list}
-            initial="hidden"
-            animate="show"
-            className="space-y-1 px-2 py-3"
-          >
-            <AnimatePresence mode="popLayout">
-              {messages.map((message) => {
-                const author = getAuthor(message.authorId);
-                const mine = message.authorId === "you";
-                return (
-                  <motion.article
-                    key={message.id}
-                    variants={item}
-                    layout
-                    className={`flex gap-3 rounded-xl px-4 py-3 ${
-                      mine ? "bg-yellow-400/5" : "hover:bg-white/5"
-                    }`}
-                  >
-                    <PersonAvatar id={author.id} />
-                    <div className="min-w-0 flex-1 text-start">
-                      <p className="text-sm">
-                        <span className="font-medium text-white">
-                          {author.name}
-                        </span>
-                        <span className="ms-2 text-xs text-slate-500">
-                          {message.time}
-                        </span>
-                      </p>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
-                        {message.text}
-                      </p>
-                      {message.image ? (
-                        <div className="relative mt-3 aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10">
-                          <Image
-                            src={message.image}
-                            alt=""
-                            fill
-                            sizes="320px"
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </motion.article>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
+          {loading ? (
+            <p className="px-5 py-8 text-sm text-slate-500">بنحمّل الرسائل…</p>
+          ) : messages.length === 0 ? (
+            <p className="px-5 py-8 text-sm text-slate-500">
+              لسه مفيش رسائل في القناة دي — ابدأ النقاش.
+            </p>
+          ) : (
+            <motion.div
+              key={`${courseId}-${safeActive}`}
+              variants={list}
+              initial="hidden"
+              animate="show"
+              className="space-y-1 px-2 py-3"
+            >
+              <AnimatePresence mode="popLayout">
+                {messages.map((message) => {
+                  const mine = message.user_id === userId;
+                  const label =
+                    message.author_label || (mine ? "إنت" : "عضو");
+                  return (
+                    <motion.article
+                      key={message.id}
+                      variants={item}
+                      layout
+                      className={`flex gap-3 rounded-xl px-4 py-3 ${
+                        mine ? "bg-yellow-400/5" : "hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400">
+                        {label.slice(0, 2)}
+                      </span>
+                      <div className="min-w-0 flex-1 text-start">
+                        <p className="text-sm">
+                          <span className="font-medium text-white">{label}</span>
+                          <span className="ms-2 text-xs text-slate-500">
+                            {formatMessageTime(message.created_at)}
+                          </span>
+                        </p>
+                        <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                          {message.body}
+                        </p>
+                        {message.image_url ? (
+                          <div className="relative mt-3 aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-white/10">
+                            <Image
+                              src={message.image_url}
+                              alt=""
+                              fill
+                              sizes="320px"
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    </motion.article>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </RtlScroll>
 
         <form
           className="shrink-0 border-t border-white/10 p-4"
           onSubmit={(event) => {
             event.preventDefault();
-            send();
+            void send();
           }}
         >
+          {notice ? (
+            <p className="mb-2 text-xs text-yellow-400/90">{notice}</p>
+          ) : null}
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md focus-within:border-yellow-400/35">
             <textarea
               rows={2}
@@ -186,7 +224,7 @@ export function CommunityView() {
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  send();
+                  void send();
                 }
               }}
               placeholder={
@@ -196,7 +234,7 @@ export function CommunityView() {
               }
               className="w-full resize-none bg-transparent text-start text-sm leading-relaxed text-white outline-none placeholder:text-slate-500"
             />
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {isPhotos ? (
                 <>
                   <button
@@ -204,25 +242,29 @@ export function CommunityView() {
                     onClick={() => fileRef.current?.click()}
                     className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400"
                   >
-                    ارفع صورة
+                    رابط صورة
                   </button>
                   <input
                     ref={fileRef}
-                    type="file"
-                    accept="image/*"
+                    type="url"
                     className="hidden"
-                    onChange={() => {
-                      /* UI-only picker; caption sends as text */
-                    }}
+                    onChange={() => undefined}
+                  />
+                  <input
+                    value={pendingImageUrl ?? ""}
+                    onChange={(e) => setPendingImageUrl(e.target.value || null)}
+                    placeholder="https://… صورة (اختياري)"
+                    dir="ltr"
+                    className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none"
                   />
                 </>
               ) : null}
               <button
                 type="submit"
-                disabled={!draft.trim()}
+                disabled={!draft.trim() || sending}
                 className="ms-auto rounded-full bg-yellow-400 px-4 py-1.5 text-sm font-medium text-[#050505] disabled:opacity-35"
               >
-                ابعت
+                {sending ? "…" : "ابعت"}
               </button>
             </div>
           </div>

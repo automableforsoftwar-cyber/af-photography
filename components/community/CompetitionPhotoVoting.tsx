@@ -39,6 +39,7 @@ const galleryItem = {
 export function CompetitionPhotoVoting() {
   const userId = useAuthStore((s) => s.userId);
   const email = useAuthStore((s) => s.email);
+  const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -48,11 +49,16 @@ export function CompetitionPhotoVoting() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!activeCourseId) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const data = await fetchCommunityPosts(userId, "votes");
+    const data = await fetchCommunityPosts(userId, "votes", activeCourseId);
     setPosts(data);
     setLoading(false);
-  }, [userId]);
+  }, [userId, activeCourseId]);
 
   useEffect(() => {
     void load();
@@ -86,12 +92,17 @@ export function CompetitionPhotoVoting() {
   };
 
   const onUpload = async () => {
+    if (!activeCourseId) {
+      setNotice("لازم تفتح كورس مفعّل الأول.");
+      return;
+    }
     setUploadBusy(true);
     setNotice(null);
     const result = await uploadCommunityPost({
       title,
       imageUrl,
       authorLabel: email.split("@")[0] || "عضو",
+      courseId: activeCourseId,
     });
     setUploadBusy(false);
     if (!result.ok) {
@@ -116,7 +127,7 @@ export function CompetitionPhotoVoting() {
             شارك فريمك… أو صوّت للأحسن
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            ارفع وصوّت من داخل اللوحة بعد تفعيل الكورس.
+            مسابقة معزولة لكورسك الحالي فقط — الرسائل والصور محفوظة في السيرفر.
           </p>
 
           <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">

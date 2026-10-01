@@ -1,14 +1,11 @@
 /**
- * generate_codes.js
+ * generate_codes.js — launch / batch VIP codes
  *
- * Batch-generate unique single-use VIP codes for a specific course.
+ * Launch (100 codes → VIP_CODES_EXPORT.txt + Supabase insert):
+ *   node generate_codes.js --launch
  *
- * Usage:
+ * Single course:
  *   node generate_codes.js --course=photographer-eye --count=50
- *   node generate_codes.js --course=smart-start --count=20 --prefix=AFP
- *
- * If SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL are set in .env.local,
- * codes are inserted into access_codes. Otherwise SQL INSERT statements are printed.
  */
 
 const fs = require("fs");
@@ -30,9 +27,16 @@ function loadEnvLocal() {
 }
 
 function parseArgs(argv) {
-  const opts = { course: null, count: 10, prefix: "AFP", maxUses: 1 };
+  const opts = {
+    course: null,
+    count: 10,
+    prefix: "AFP",
+    maxUses: 1,
+    launch: false,
+  };
   for (const arg of argv) {
-    if (arg.startsWith("--course=")) opts.course = arg.slice(9);
+    if (arg === "--launch") opts.launch = true;
+    else if (arg.startsWith("--course=")) opts.course = arg.slice(9);
     else if (arg.startsWith("--count=")) opts.count = Number(arg.slice(8));
     else if (arg.startsWith("--prefix=")) opts.prefix = arg.slice(9);
     else if (arg.startsWith("--max-uses=")) opts.maxUses = Number(arg.slice(11));
@@ -46,60 +50,36 @@ function makeCode(prefix) {
   return `${prefix}-${a}-${b}`;
 }
 
-async function main() {
-  const opts = parseArgs(process.argv.slice(2));
-  if (!opts.course) {
-    console.error(
-      "Missing --course. Example: node generate_codes.js --course=photographer-eye --count=50",
-    );
-    process.exit(1);
+function generateUnique(count, prefix, existing = new Set()) {
+  const codes = new Set(existing);
+  while (codes.size < existing.size + count) {
+    codes.add(makeCode(prefix));
   }
-  if (!Number.isFinite(opts.count) || opts.count < 1) {
-    console.error("--count must be a positive number");
-    process.exit(1);
-  }
+  return Array.from(codes).slice(-count);
+}
 
-  const codes = new Set();
-  while (codes.size < opts.count) {
-    codes.add(makeCode(opts.prefix));
-  }
-  const list = Array.from(codes);
-
+async function insertRows(rows) {
   const env = { ...process.env, ...loadEnvLocal() };
   const url = (env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-  const rows = list.map((code) => ({
-    code,
-    target_course: opts.course,
-    max_uses: opts.maxUses,
-    current_uses: 0,
-  }));
-
-  console.log(`# Generated ${rows.length} codes for course "${opts.course}"`);
-  console.log(list.join("\n"));
-  console.log("");
-
-  if (url && serviceKey) {
-    const { createClient } = require("@supabase/supabase-js");
-    const admin = createClient(url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await admin.from("access_codes").insert(rows).select("code");
-    if (error) {
-      console.error("Insert failed:", error.message);
-      console.log("\n-- Fallback SQL:");
-      printSql(rows);
-      process.exit(1);
-    }
-    console.log(`Inserted ${data?.length ?? 0} rows into access_codes.`);
-    return;
+  if (!url || !serviceKey) {
+    console.warn(
+      "No SUPABASE_SERVICE_ROLE_KEY — skipping remote insert (export file still written).",
+    );
+    return { inserted: 0, sqlFallback: true };
   }
 
-  console.log(
-    "# No SUPABASE_SERVICE_ROLE_KEY found — printing SQL instead. Paste into Supabase SQL Editor.\n",
-  );
-  printSql(rows);
+  const { createClient } = require("@supabase/supabase-js");
+  const admin = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await admin.from("access_codes").insert(rows).select("code");
+  if (error) {
+    console.error("Insert failed:", error.message);
+    return { inserted: 0, error: error.message };
+  }
+  return { inserted: data?.length ?? 0 };
 }
 
 function printSql(rows) {
@@ -112,6 +92,105 @@ function printSql(rows) {
   console.log(
     `INSERT INTO public.access_codes (code, target_course, max_uses, current_uses)\nVALUES\n  ${values};`,
   );
+}
+
+async function runLaunch() {
+  const photographer = generateUnique(50, "AFP");
+  const smart = generateUnique(50, "AFP", new Set(photographer));
+
+  const photoRows = photographer.map((code) => ({
+    code,
+    target_course: "photographer-eye",
+    max_uses: 1,
+    current_uses: 0,
+  }));
+  const smartRows = smart.map((code) => ({
+    code,
+    target_course: "smart-start",
+    max_uses: 1,
+    current_uses: 0,
+  }));
+  const allRows = [...photoRows, ...smartRows];
+
+  const exportPath = path.join(process.cwd(), "VIP_CODES_EXPORT.txt");
+  const body = [
+    "AF P — VIP CODES EXPORT (LAUNCH)",
+    `Generated: ${new Date().toISOString()}`,
+    "Each code is single-use and unlocks ONE course for 30 days.",
+    "",
+    "========================================",
+    "SECTION 1: 50 Codes for Photographer Eye",
+    "target_course = photographer-eye",
+    "========================================",
+    "",
+    ...photographer,
+    "",
+    "========================================",
+    "SECTION 2: 50 Codes for Smart Start",
+    "target_course = smart-start",
+    "========================================",
+    "",
+    ...smart,
+    "",
+    `TOTAL: ${allRows.length} codes`,
+    "",
+  ].join("\n");
+
+  fs.writeFileSync(exportPath, body, "utf8");
+  console.log(`Wrote ${exportPath}`);
+
+  const result = await insertRows(allRows);
+  if (result.error) {
+    console.log("\n-- Fallback SQL:");
+    printSql(allRows);
+    process.exit(1);
+  }
+  if (result.sqlFallback) {
+    console.log("\n-- SQL (paste if insert skipped):");
+    printSql(allRows);
+  } else {
+    console.log(`Inserted ${result.inserted} rows into access_codes.`);
+  }
+}
+
+async function main() {
+  const opts = parseArgs(process.argv.slice(2));
+
+  if (opts.launch) {
+    await runLaunch();
+    return;
+  }
+
+  if (!opts.course) {
+    console.error(
+      "Missing --course or use --launch. Example: node generate_codes.js --launch",
+    );
+    process.exit(1);
+  }
+  if (!Number.isFinite(opts.count) || opts.count < 1) {
+    console.error("--count must be a positive number");
+    process.exit(1);
+  }
+
+  const list = generateUnique(opts.count, opts.prefix);
+  const rows = list.map((code) => ({
+    code,
+    target_course: opts.course,
+    max_uses: opts.maxUses,
+    current_uses: 0,
+  }));
+
+  console.log(`# Generated ${rows.length} codes for course "${opts.course}"`);
+  console.log(list.join("\n"));
+  console.log("");
+
+  const result = await insertRows(rows);
+  if (result.error || result.sqlFallback) {
+    printSql(rows);
+    if (result.error) process.exit(1);
+  } else {
+    console.log(`Inserted ${result.inserted} rows into access_codes.`);
+  }
 }
 
 main().catch((err) => {

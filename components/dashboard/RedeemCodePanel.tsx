@@ -57,7 +57,9 @@ export function RedeemCodePanel({
       return;
     }
 
-    setSuccess(`تم فتح «${unlocked.title}» فقط — باقي الكورسات لسه مقفولة.`);
+    setSuccess(
+      `تم فتح «${unlocked.title}» لمدة ٣٠ يوم — باقي الكورسات لسه مقفولة.`,
+    );
     setCode("");
     setLoading(false);
     onUnlocked?.(result.courseId);

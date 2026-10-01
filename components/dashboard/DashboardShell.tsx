@@ -45,6 +45,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const pathname = usePathname();
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
+  const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const email = useAuthStore((s) => s.email);
 
   const onUnlocked = (id: string) => {
@@ -129,7 +130,13 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           ) : section === "course" && courseId ? (
             <CourseRoom courseId={courseId} />
           ) : section === "community" ? (
-            <CommunityView />
+            activeCourseId ? (
+              <CommunityView courseId={activeCourseId} />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+                افتح كورس مفعّل أولاً عشان تدخل مجتمع المسار المعزول.
+              </div>
+            )
           ) : section === "inbox" ? (
             <InboxView />
           ) : section === "challenges" ? (

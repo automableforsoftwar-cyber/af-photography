@@ -3,9 +3,11 @@ import { supabase } from "@/lib/supabase";
 export const CODE_INVALID_MSG =
   "عفواً، هذا الكود غير صالح أو تم استنفاد الحد الأقصى للاستخدام.";
 export const CODE_ALREADY_OWNED_MSG =
-  "إنت فاتح الكورس ده بالفعل على حسابك.";
+  "إنت فاتح الكورس ده بالفعل على حسابك (لسه الاشتراك شغال).";
 export const EMAIL_EXISTS_MSG = "عفواً، الإيميل ده مسجّل بالفعل.";
 export const LOGIN_INVALID_MSG = "الإيميل أو كلمة المرور غير صحيحة.";
+
+const SUBSCRIPTION_DAYS = 30;
 
 type AccessCodeRow = {
   id: string;
@@ -20,8 +22,24 @@ export type AuthResult =
   | { ok: false; message: string };
 
 export type RedeemResult =
-  | { ok: true; courseId: string }
+  | { ok: true; courseId: string; expiresAt: string }
   | { ok: false; message: string };
+
+export type CourseEnrollment = {
+  courseId: string;
+  expiresAt: string | null;
+};
+
+function plusThirtyDaysIso(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + SUBSCRIPTION_DAYS);
+  return d.toISOString();
+}
+
+function isActiveExpiry(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return false;
+  return new Date(expiresAt).getTime() > Date.now();
+}
 
 /** Sign up with real email + password (no course unlock). */
 export async function signUpWithEmail(input: {
@@ -120,7 +138,6 @@ export async function signInWithEmail(input: {
     return { ok: false, message: LOGIN_INVALID_MSG };
   }
 
-  // Ensure profile row exists (idempotent)
   await supabase.from("profiles").upsert(
     { id: data.user.id, email },
     { onConflict: "id" },
@@ -130,7 +147,8 @@ export async function signInWithEmail(input: {
 }
 
 /**
- * Redeem a single-use course code. Unlocks ONLY target_course for this user.
+ * Redeem a single-use course code. Unlocks ONLY target_course for 30 days.
+ * Expired enrollments can be renewed with a new valid code.
  */
 export async function redeemCourseCode(codeInput: string): Promise<RedeemResult> {
   const code = codeInput.trim();
@@ -160,15 +178,16 @@ export async function redeemCourseCode(codeInput: string): Promise<RedeemResult>
   }
 
   const courseId = row.target_course;
+  const expiresAt = plusThirtyDaysIso();
 
   const { data: existing } = await supabase
     .from("user_courses")
-    .select("id")
+    .select("id, expires_at")
     .eq("user_id", user.id)
     .eq("course_id", courseId)
     .maybeSingle();
 
-  if (existing) {
+  if (existing && isActiveExpiry(existing.expires_at as string | null)) {
     return { ok: false, message: CODE_ALREADY_OWNED_MSG };
   }
 
@@ -183,22 +202,44 @@ export async function redeemCourseCode(codeInput: string): Promise<RedeemResult>
     return { ok: false, message: "حصل خطأ أثناء تفعيل الكود. حاول تاني." };
   }
 
-  const { error: enrollError } = await supabase.from("user_courses").insert({
-    user_id: user.id,
-    course_id: courseId,
-    unlocked_via_code: code,
-  });
+  if (existing) {
+    // Renew expired enrollment — new 30-day window
+    const { error: renewError } = await supabase
+      .from("user_courses")
+      .update({
+        expires_at: expiresAt,
+        unlocked_via_code: code,
+        unlocked_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
 
-  if (enrollError) {
-    console.error("user_courses insert:", enrollError);
-    await supabase
-      .from("access_codes")
-      .update({ current_uses: row.current_uses })
-      .eq("id", row.id);
-    if (enrollError.code === "23505") {
-      return { ok: false, message: CODE_ALREADY_OWNED_MSG };
+    if (renewError) {
+      console.error("user_courses renew:", renewError);
+      await supabase
+        .from("access_codes")
+        .update({ current_uses: row.current_uses })
+        .eq("id", row.id);
+      return { ok: false, message: "حصل خطأ أثناء تجديد الاشتراك. حاول تاني." };
     }
-    return { ok: false, message: "حصل خطأ أثناء فتح الكورس. حاول تاني." };
+  } else {
+    const { error: enrollError } = await supabase.from("user_courses").insert({
+      user_id: user.id,
+      course_id: courseId,
+      unlocked_via_code: code,
+      expires_at: expiresAt,
+    });
+
+    if (enrollError) {
+      console.error("user_courses insert:", enrollError);
+      await supabase
+        .from("access_codes")
+        .update({ current_uses: row.current_uses })
+        .eq("id", row.id);
+      if (enrollError.code === "23505") {
+        return { ok: false, message: CODE_ALREADY_OWNED_MSG };
+      }
+      return { ok: false, message: "حصل خطأ أثناء فتح الكورس. حاول تاني." };
+    }
   }
 
   await supabase.from("user_progress").upsert(
@@ -211,15 +252,23 @@ export async function redeemCourseCode(codeInput: string): Promise<RedeemResult>
     { onConflict: "user_id,course_id" },
   );
 
-  return { ok: true, courseId };
+  return { ok: true, courseId, expiresAt };
 }
 
+/** Active (non-expired) course IDs only. */
 export async function fetchUnlockedCourseIds(
   userId: string,
 ): Promise<string[]> {
+  const enrollments = await fetchActiveEnrollments(userId);
+  return enrollments.map((e) => e.courseId);
+}
+
+export async function fetchActiveEnrollments(
+  userId: string,
+): Promise<CourseEnrollment[]> {
   const { data, error } = await supabase
     .from("user_courses")
-    .select("course_id")
+    .select("course_id, expires_at")
     .eq("user_id", userId);
 
   if (error) {
@@ -227,7 +276,12 @@ export async function fetchUnlockedCourseIds(
     return [];
   }
 
-  return (data ?? []).map((row) => row.course_id as string);
+  return (data ?? [])
+    .filter((row) => isActiveExpiry(row.expires_at as string | null))
+    .map((row) => ({
+      courseId: row.course_id as string,
+      expiresAt: (row.expires_at as string) ?? null,
+    }));
 }
 
 export async function signOutSession() {
