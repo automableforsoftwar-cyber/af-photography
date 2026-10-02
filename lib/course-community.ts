@@ -46,8 +46,8 @@ export const channels: CommunityChannel[] = [
   },
   {
     id: "announcements",
-    name: "الإعلانات",
-    topic: "إعلانات رسمية من الإدارة — للطلاب للقراءة فقط",
+    name: "الرسائل",
+    topic: "رسائل وإعلانات رسمية من الإدارة — للطلاب للقراءة فقط",
   },
   {
     id: "photos",
@@ -194,8 +194,13 @@ export async function sendCourseMessage(input: {
     return { ok: false, message: "chat_blocked" };
   }
 
-  // Announcements channel: staff only
-  if (input.channelId === "announcements") {
+  // Announcements / #الرسائل: staff only
+  if (
+    input.channelId === "announcements" ||
+    input.channelId === "messages" ||
+    input.channelId === "الرسائل" ||
+    input.channelId === "الإعلانات"
+  ) {
     if (flags.role !== "instructor" && flags.role !== "organizer") {
       return { ok: false, message: "read_only" };
     }

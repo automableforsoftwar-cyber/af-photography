@@ -184,7 +184,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     channels.find((c) => c.id === channelId) ?? channels[0];
   const isPhotos = tab === "photos";
   const isAnnouncements = tab === "announcements";
-  const announcementsReadOnly = isAnnouncements && !isStaff;
+  // Strict: students never get a composer on #الرسائل — only instructor/organizer
+  const canBroadcastAnnouncements =
+    role === "instructor" || role === "organizer";
+  const announcementsReadOnly =
+    isAnnouncements && !canBroadcastAnnouncements;
 
   const load = useCallback(async () => {
     if (!courseId || tab === "inbox") return;
@@ -393,7 +397,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "general", label: "#عام" },
-    { id: "announcements", label: "#الإعلانات" },
+    { id: "announcements", label: "#الرسائل" },
     { id: "photos", label: "#الصور" },
     {
       id: "inbox",
@@ -427,18 +431,25 @@ export function CommunityView({ courseId }: CommunityViewProps) {
         <ul className="space-y-1 p-3">
           {tabs.map((t) => {
             const active = t.id === tab;
+            const isLockedChannel =
+              t.id === "announcements" && !canBroadcastAnnouncements;
             return (
               <li key={t.id}>
                 <button
                   type="button"
                   onClick={() => setTab(t.id)}
-                  className={`w-full rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
                     active
                       ? "bg-yellow-400/15 font-medium text-yellow-400"
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                   }`}
                 >
-                  {t.label}
+                  <span>{t.label}</span>
+                  {isLockedChannel ? (
+                    <span className="shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.6rem] text-slate-500">
+                      قراءة فقط
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );
@@ -502,7 +513,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 </div>
                 {isAnnouncements ? (
                   <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] text-slate-400">
-                    {announcementsReadOnly ? "قراءة فقط" : "إدارة · نشر"}
+                    {announcementsReadOnly
+                      ? "قراءة فقط · للإدارة"
+                      : "إدارة · نشر للجميع"}
                   </span>
                 ) : null}
               </div>
@@ -773,13 +786,16 @@ export function CommunityView({ courseId }: CommunityViewProps) {
             {announcementsReadOnly ? (
               <div
                 dir="rtl"
-                className="shrink-0 border-t border-white/10 bg-white/[0.03] px-4 py-5 text-center"
+                className="shrink-0 border-t border-white/10 bg-white/[0.04] px-4 py-6 text-center"
+                role="status"
+                aria-live="polite"
               >
-                <p className="text-sm font-medium text-slate-300">
-                  هذه القناة للقراءة فقط
+                <p className="text-sm font-medium text-slate-200">
+                  هذه القناة للقراءة فقط - مخصصة لرسائل الإدارة
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  الإعلانات الرسمية من الإدارة — مفيش إمكانية للرد هنا.
+                <p className="mt-1.5 text-xs text-slate-500">
+                  تقدر تقرأ رسائل الإدارة هنا، لكن مفيش إمكانية للكتابة أو رفع
+                  صور.
                 </p>
               </div>
             ) : (
