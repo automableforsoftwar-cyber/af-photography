@@ -18,9 +18,7 @@ import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const NAV: { href: string; label: string; staffOnly?: boolean }[] = [
   { href: "/", label: "الرئيسية" },
-  { href: "/dashboard/courses", label: "الكورسات" },
   { href: "/dashboard/community", label: "المجتمع" },
-  { href: "/dashboard/challenges", label: "المسابقات" },
   { href: "/dashboard/gallery", label: "معرض الفائزين" },
   { href: "/dashboard/admin", label: "الإدارة", staffOnly: true },
   { href: "/dashboard/account", label: "حسابك" },

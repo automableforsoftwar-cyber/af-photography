@@ -472,6 +472,12 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
         <nav className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-3">
           <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 backdrop-blur-xl">
             <Link
+              href="/"
+              className="text-sm text-slate-400 transition hover:text-yellow-400"
+            >
+              الرئيسية
+            </Link>
+            <Link
               href="/dashboard/community"
               className="text-sm text-slate-400 transition hover:text-yellow-400"
             >
@@ -481,10 +487,16 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
               الإدارة
             </span>
             <Link
-              href="/dashboard/courses"
+              href="/dashboard/gallery"
               className="text-sm text-slate-400 transition hover:text-yellow-400"
             >
-              الكورسات
+              معرض الفائزين
+            </Link>
+            <Link
+              href="/dashboard/account"
+              className="text-sm text-slate-400 transition hover:text-yellow-400"
+            >
+              حسابك
             </Link>
           </div>
         </nav>
