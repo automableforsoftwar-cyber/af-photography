@@ -7,6 +7,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
 import {
+  deleteCommunityPost,
   fetchCompetitionLeaderboard,
   fetchInstructorAnalytics,
   fetchSubscribedProfilesForAdmin,
@@ -20,7 +21,12 @@ import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 type AdminTab = "members" | "competitions" | "analytics";
 
-export function AdminDashboard() {
+type AdminDashboardProps = {
+  /** When true, render inside DashboardShell (no duplicate AuthGate/nav). */
+  embedded?: boolean;
+};
+
+export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const { ready, isStaff, role, title: myTitle } = useLiveStaffRole();
@@ -113,14 +119,33 @@ export function AdminDashboard() {
     );
   };
 
-  if (!ready || !isStaff) {
-    return (
-      <AuthGate>
-        <div className="flex min-h-svh items-center justify-center bg-[#050505] text-sm text-slate-500">
-          {ready ? "بنحوّلك للوحة التحكم…" : "بنتحقق من الصلاحيات…"}
-        </div>
-      </AuthGate>
+  const removeCompetitionEntry = async (postId: string) => {
+    setBusyId(postId);
+    setNotice(null);
+    const result = await deleteCommunityPost(postId);
+    setBusyId(null);
+    if (!result.ok) {
+      setNotice("مقدرناش نحذف مشاركة المسابقة.");
+      return;
+    }
+    setLeaderboard((prev) => prev.filter((row) => row.postId !== postId));
+    setAnalytics((prev) =>
+      prev
+        ? {
+            ...prev,
+            hallOfFame: prev.hallOfFame.filter((row) => row.postId !== postId),
+          }
+        : prev,
     );
+  };
+
+  if (!ready || !isStaff) {
+    const pending = (
+      <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+        {ready ? "بنحوّلك للوحة التحكم…" : "بنتحقق من الصلاحيات…"}
+      </div>
+    );
+    return embedded ? pending : <AuthGate>{pending}</AuthGate>;
   }
 
   const tabs: { id: AdminTab; label: string; instructorOnly?: boolean }[] = [
@@ -131,34 +156,8 @@ export function AdminDashboard() {
 
   const visibleTabs = tabs.filter((t) => !t.instructorOnly || isInstructor);
 
-  return (
-    <AuthGate>
-      <div className="relative min-h-svh overflow-x-clip bg-[#050505] px-4 pb-12 pt-20 sm:px-6 lg:px-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]"
-        />
-        <nav className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-3">
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 backdrop-blur-xl">
-            <Link
-              href="/dashboard/community"
-              className="text-sm text-slate-400 transition hover:text-yellow-400"
-            >
-              المجتمع
-            </Link>
-            <span className="text-sm font-semibold text-yellow-400">
-              الإدارة
-            </span>
-            <Link
-              href="/dashboard/courses"
-              className="text-sm text-slate-400 transition hover:text-yellow-400"
-            >
-              الكورسات
-            </Link>
-          </div>
-        </nav>
-
-        <div className="relative mx-auto w-full max-w-5xl text-right">
+  const body = (
+    <div className="relative mx-auto w-full max-w-5xl overflow-y-auto pb-8 text-right">
           <p className="text-sm font-medium text-yellow-400">AF P Admin</p>
           <h1 className="font-display mt-2 text-3xl font-bold text-white sm:text-4xl">
             لوحة الإدارة
@@ -328,9 +327,33 @@ export function AdminDashboard() {
                           </p>
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-sm font-semibold text-yellow-400">
-                        {row.voteCount} صوت
-                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-sm font-semibold text-yellow-400">
+                          {row.voteCount} صوت
+                        </span>
+                        <button
+                          type="button"
+                          title="حذف المشاركة"
+                          aria-label="حذف المشاركة"
+                          disabled={busyId === row.postId}
+                          onClick={() => void removeCompetitionEntry(row.postId)}
+                          className="rounded-lg border border-red-400/30 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="size-4"
+                            aria-hidden
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443H3.415a.75.75 0 0 0 0 1.5h.43l.742 10.392A2.75 2.75 0 0 0 7.33 18.5h5.34a2.75 2.75 0 0 0 2.743-2.415l.742-10.392h.43a.75.75 0 0 0 0-1.5H14v-.443A2.75 2.75 0 0 0 11.25 1h-2.5ZM9.5 3.75c0-.69.56-1.25 1.25-1.25h.5c.69 0 1.25.56 1.25 1.25v.443h-3V3.75Zm1.75 3.25a.75.75 0 0 0-1.5 0v7.5a.75.75 0 0 0 1.5 0v-7.5Zm2.5.75a.75.75 0 0 0-1.5 0v6.5a.75.75 0 0 0 1.5 0v-6.5Zm-6.25-.75a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5a.75.75 0 0 1 .75-.75Z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ol>
@@ -432,7 +455,40 @@ export function AdminDashboard() {
               </section>
             </div>
           ) : null}
-        </div>
+    </div>
+  );
+
+  if (embedded) {
+    return body;
+  }
+
+  return (
+    <AuthGate>
+      <div className="relative min-h-svh overflow-x-clip bg-[#050505] px-4 pb-12 pt-20 sm:px-6 lg:px-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]"
+        />
+        <nav className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-3">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 backdrop-blur-xl">
+            <Link
+              href="/dashboard/community"
+              className="text-sm text-slate-400 transition hover:text-yellow-400"
+            >
+              المجتمع
+            </Link>
+            <span className="text-sm font-semibold text-yellow-400">
+              الإدارة
+            </span>
+            <Link
+              href="/dashboard/courses"
+              className="text-sm text-slate-400 transition hover:text-yellow-400"
+            >
+              الكورسات
+            </Link>
+          </div>
+        </nav>
+        {body}
       </div>
     </AuthGate>
   );

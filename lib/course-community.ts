@@ -37,7 +37,7 @@ export type CommunityChannel = {
 const MESSAGE_SELECT =
   "id, course_id, channel_id, user_id, author_label, body, image_url, created_at, reply_to_id, reactions, profiles!course_messages_user_id_fkey(role, title)";
 
-/** Course community — exactly two channels (isolated per course_id in DB). */
+/** Course community channels (isolated per course_id in DB). */
 export const channels: CommunityChannel[] = [
   {
     id: "general",
@@ -48,6 +48,11 @@ export const channels: CommunityChannel[] = [
     id: "photos",
     name: "الصور",
     topic: "شارك فريماتك واطلب رأي الزملاء",
+  },
+  {
+    id: "announcements",
+    name: "إعلانات",
+    topic: "إعلانات رسمية من الإدارة — للطلاب للقراءة فقط",
   },
 ];
 
@@ -86,7 +91,7 @@ export async function fetchCourseMessages(input: {
   channelId: string;
 }): Promise<CourseChatMessage[]> {
   const since = daysAgoIso(RETENTION_DAYS);
-  const { data, error } = await supabase
+  const base = supabase
     .from("course_messages")
     .select(MESSAGE_SELECT)
     .eq("course_id", input.courseId)
@@ -94,9 +99,26 @@ export async function fetchCourseMessages(input: {
     .gte("created_at", since)
     .order("created_at", { ascending: true });
 
+  let { data, error } = await base;
+
+  // If embed/join fails, fall back to plain rows so chat still loads
   if (error) {
-    console.error("course_messages fetch:", error);
-    return [];
+    console.error("course_messages fetch (with profiles):", error);
+    const fallback = await supabase
+      .from("course_messages")
+      .select(
+        "id, course_id, channel_id, user_id, author_label, body, image_url, created_at, reply_to_id, reactions",
+      )
+      .eq("course_id", input.courseId)
+      .eq("channel_id", input.channelId)
+      .gte("created_at", since)
+      .order("created_at", { ascending: true });
+    data = fallback.data as typeof data;
+    error = fallback.error;
+    if (error) {
+      console.error("course_messages fetch:", error);
+      return [];
+    }
   }
 
   const rows = ((data ?? []) as Array<
@@ -170,6 +192,13 @@ export async function sendCourseMessage(input: {
   }
   if (flags.isChatBlocked) {
     return { ok: false, message: "chat_blocked" };
+  }
+
+  // Announcements channel: staff only
+  if (input.channelId === "announcements") {
+    if (flags.role !== "instructor" && flags.role !== "organizer") {
+      return { ok: false, message: "read_only" };
+    }
   }
 
   const body = input.body.trim();

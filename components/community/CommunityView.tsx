@@ -69,7 +69,7 @@ function channelLabel(name: string) {
   return `#${name}`;
 }
 
-type TabId = "general" | "photos" | "amgad";
+type TabId = "general" | "photos" | "announcements" | "inbox";
 
 type CommunityViewProps = {
   courseId: string;
@@ -174,13 +174,20 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     );
   }, []);
 
-  const channelId = tab === "photos" ? "photos" : "general";
+  const channelId =
+    tab === "photos"
+      ? "photos"
+      : tab === "announcements"
+        ? "announcements"
+        : "general";
   const activeChannel =
     channels.find((c) => c.id === channelId) ?? channels[0];
   const isPhotos = tab === "photos";
+  const isAnnouncements = tab === "announcements";
+  const announcementsReadOnly = isAnnouncements && !isStaff;
 
   const load = useCallback(async () => {
-    if (!courseId || tab === "amgad") return;
+    if (!courseId || tab === "inbox") return;
     setLoading(true);
     const data = await fetchCourseMessages({
       courseId,
@@ -280,6 +287,10 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   }, [pickerOpen, reactPickerFor]);
 
   const send = async () => {
+    if (announcementsReadOnly) {
+      setNotice("هذه القناة للقراءة فقط");
+      return;
+    }
     if (chatMuted) {
       setNotice("تم إيقاف حسابك من إرسال الرسائل");
       return;
@@ -312,7 +323,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       setNotice(
         result.message === "blocked" || result.message === "chat_blocked"
           ? "تم إيقاف حسابك من إرسال الرسائل"
-          : "مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.",
+          : result.message === "read_only"
+            ? "هذه القناة للقراءة فقط"
+            : "مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.",
       );
       return;
     }
@@ -381,7 +394,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const tabs: { id: TabId; label: string }[] = [
     { id: "general", label: "#عام" },
     { id: "photos", label: "#الصور" },
-    { id: "amgad", label: "أمجد فريد" },
+    { id: "announcements", label: "#إعلانات" },
+    {
+      id: "inbox",
+      label: isStaff ? "صندوق الوارد" : "أمجد فريد",
+    },
   ];
 
   return (
@@ -469,17 +486,26 @@ export function CommunityView({ courseId }: CommunityViewProps) {
       </aside>
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {tab === "amgad" ? (
+        {tab === "inbox" ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
             <header className="shrink-0 border-b border-white/10 px-5 py-4 text-right">
-              <h1 className="font-display text-base font-bold text-white">
-                {channelLabel(activeChannel?.name ?? "")}
-              </h1>
-              <p className="mt-0.5 text-xs text-slate-400">
-                {activeChannel?.topic}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h1 className="font-display text-base font-bold text-white">
+                    {channelLabel(activeChannel?.name ?? "")}
+                  </h1>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {activeChannel?.topic}
+                  </p>
+                </div>
+                {isAnnouncements ? (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] text-slate-400">
+                    {announcementsReadOnly ? "قراءة فقط" : "إدارة · نشر"}
+                  </span>
+                ) : null}
+              </div>
             </header>
 
             <RtlScroll className="min-h-0 flex-1">
@@ -489,7 +515,9 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 </p>
               ) : messages.length === 0 ? (
                 <p className="px-5 py-8 text-right text-sm text-slate-500">
-                  لسه مفيش رسائل — ابدأ النقاش أو ارفع صورة من جهازك.
+                  {isAnnouncements
+                    ? "لسه مفيش إعلانات — الإدارة هتنشر هنا لما يبقى فيه تحديث."
+                    : "لسه مفيش رسائل — ابدأ النقاش أو ارفع صورة من جهازك."}
                 </p>
               ) : (
                 <motion.div
@@ -536,7 +564,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                           key={message.id}
                           variants={item}
                           layout
-                          className={`group relative flex flex-row gap-3 rounded-xl px-4 py-3 text-right ${
+                          className={`group relative flex flex-row gap-3 overflow-visible rounded-xl px-4 py-3 text-right ${
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
                         >
@@ -742,6 +770,19 @@ export function CommunityView({ courseId }: CommunityViewProps) {
               )}
             </RtlScroll>
 
+            {announcementsReadOnly ? (
+              <div
+                dir="rtl"
+                className="shrink-0 border-t border-white/10 bg-white/[0.03] px-4 py-5 text-center"
+              >
+                <p className="text-sm font-medium text-slate-300">
+                  هذه القناة للقراءة فقط
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  الإعلانات الرسمية من الإدارة — مفيش إمكانية للرد هنا.
+                </p>
+              </div>
+            ) : (
             <form
               dir="rtl"
               className="shrink-0 border-t border-white/10 p-4 text-right"
@@ -868,6 +909,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 </div>
               </div>
             </form>
+            )}
           </>
         )}
       </section>

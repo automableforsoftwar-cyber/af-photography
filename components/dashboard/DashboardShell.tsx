@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
+import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { CommunityView } from "@/components/community/CommunityView";
 import { CompetitionPhotoVoting } from "@/components/community/CompetitionPhotoVoting";
 import { CourseRoom } from "@/components/dashboard/CourseRoom";
@@ -147,9 +148,13 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <CourseRoom courseId={courseId} />
           ) : section === "community" ? (
             activeCourseId || isStaff ? (
-              <CommunityView
-                courseId={activeCourseId ?? modules[0]?.id ?? "photographer-eye"}
-              />
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <CommunityView
+                  courseId={
+                    activeCourseId ?? modules[0]?.id ?? "photographer-eye"
+                  }
+                />
+              </div>
             ) : (
               <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
                 افتح كورس مفعّل أولاً عشان تدخل مجتمع المسار المعزول.
@@ -161,6 +166,8 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <DashboardGallery />
           ) : section === "account" ? (
             <AccountView />
+          ) : section === "admin" ? (
+            <AdminDashboard embedded />
           ) : null}
         </main>
       </div>

@@ -1,5 +1,5 @@
-import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export default function DashboardAdminPage() {
-  return <AdminDashboard />;
+  return <DashboardShell section="admin" />;
 }
