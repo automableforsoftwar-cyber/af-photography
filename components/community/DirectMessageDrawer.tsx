@@ -41,8 +41,9 @@ export function DirectMessageDrawer({
 }: DirectMessageDrawerProps) {
   const myId = useAuthStore((s) => s.userId);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const { isStaff } = useLiveStaffRole();
+  const { isStaff, isChatBlocked } = useLiveStaffRole();
   const canModerate = isStaff;
+  const chatMuted = isBlocked || isChatBlocked;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
   const [peerTitle, setPeerTitle] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function DirectMessageDrawer({
   onCloseRef.current = onClose;
 
   const isSelf = Boolean(myId && peerUserId === myId);
-  const canSend = Boolean((draft.trim() || file) && !isBlocked);
+  const canSend = Boolean((draft.trim() || file) && !chatMuted);
   const initials = peerName.slice(0, 2) || "؟";
 
   useEffect(() => {
@@ -161,8 +162,8 @@ export function DirectMessageDrawer({
 
   const send = async () => {
     if (!peerUserId || sending || isSelf) return;
-    if (isBlocked) {
-      setNotice("حسابك محظور — مينفعش تبعت رسائل.");
+    if (chatMuted) {
+      setNotice("تم إيقاف حسابك من إرسال الرسائل");
       return;
     }
     if (!draft.trim() && !file) return;
@@ -189,8 +190,8 @@ export function DirectMessageDrawer({
     setSending(false);
     if (!result.ok) {
       setNotice(
-        result.message === "blocked"
-          ? "حسابك محظور — مينفعش تبعت رسائل."
+        result.message === "blocked" || result.message === "chat_blocked"
+          ? "تم إيقاف حسابك من إرسال الرسائل"
           : "مقدرناش نبعت الرسالة. حاول تاني.",
       );
       return;
@@ -347,24 +348,41 @@ export function DirectMessageDrawer({
                   {notice}
                 </p>
               ) : null}
+              {chatMuted ? (
+                <p className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-center text-sm font-medium text-red-300">
+                  تم إيقاف حسابك من إرسال الرسائل
+                </p>
+              ) : null}
               {file ? (
                 <p className="mb-2 truncate text-xs text-slate-400">
                   صورة جاهزة: {file.name}
                 </p>
               ) : null}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 focus-within:border-yellow-400/35">
+              <div
+                className={`rounded-2xl border bg-white/5 p-3 ${
+                  chatMuted
+                    ? "border-red-400/25 opacity-60"
+                    : "border-white/10 focus-within:border-yellow-400/35"
+                }`}
+              >
                 <textarea
                   rows={2}
                   value={draft}
+                  disabled={chatMuted}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
+                    if (chatMuted) return;
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       void send();
                     }
                   }}
-                  placeholder={`رسالة إلى ${peerName}…`}
-                  className="w-full resize-none bg-transparent text-right text-sm leading-relaxed text-white outline-none placeholder:text-slate-500"
+                  placeholder={
+                    chatMuted
+                      ? "تم إيقاف حسابك من إرسال الرسائل"
+                      : `رسالة إلى ${peerName}…`
+                  }
+                  className="w-full resize-none bg-transparent text-right text-sm leading-relaxed text-white outline-none placeholder:text-red-300/80 disabled:cursor-not-allowed disabled:placeholder:text-red-300"
                 />
                 <div className="mt-2 flex flex-row-reverse flex-wrap items-center justify-between gap-2">
                   <button
@@ -374,13 +392,20 @@ export function DirectMessageDrawer({
                   >
                     {sending ? "…" : "ابعت"}
                   </button>
-                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400">
+                  <label
+                    className={`rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 ${
+                      chatMuted
+                        ? "cursor-not-allowed opacity-40"
+                        : "cursor-pointer hover:border-yellow-400/40 hover:text-yellow-400"
+                    }`}
+                  >
                     {file ? "غيّر الصورة" : "ارفع صورة"}
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      disabled={chatMuted}
                       onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     />
                   </label>

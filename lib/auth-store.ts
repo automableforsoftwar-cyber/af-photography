@@ -36,6 +36,7 @@ type AuthState = {
   role: UserRole;
   title: string | null;
   isBlocked: boolean;
+  isChatBlocked: boolean;
   unlockedCourseIds: string[];
   activeCourseId: string | null;
   login: (payload: {
@@ -47,6 +48,7 @@ type AuthState = {
     role?: UserRole;
     title?: string | null;
     isBlocked?: boolean;
+    isChatBlocked?: boolean;
   }) => void;
   setActiveCourseId: (courseId: string | null) => void;
   addUnlockedCourse: (courseId: string) => void;
@@ -68,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
       role: "student",
       title: null,
       isBlocked: false,
+      isChatBlocked: false,
       unlockedCourseIds: [],
       activeCourseId: null,
       login: ({
@@ -79,6 +82,7 @@ export const useAuthStore = create<AuthState>()(
         role,
         title,
         isBlocked,
+        isChatBlocked,
       }) => {
         const next = {
           isLoggedIn: true as const,
@@ -88,6 +92,7 @@ export const useAuthStore = create<AuthState>()(
           role: role ?? get().role,
           title: title !== undefined ? title : get().title,
           isBlocked: isBlocked ?? get().isBlocked,
+          isChatBlocked: isChatBlocked ?? get().isChatBlocked,
           unlockedCourseIds: unlockedCourseIds ?? get().unlockedCourseIds,
           activeCourseId:
             activeCourseId !== undefined
@@ -96,7 +101,6 @@ export const useAuthStore = create<AuthState>()(
         };
         set(next);
         pushCookies(next);
-        // Always pull live RBAC from profiles after login
         void get().refreshProfileFlags();
       },
       setActiveCourseId: (courseId) => set({ activeCourseId: courseId }),
@@ -131,6 +135,7 @@ export const useAuthStore = create<AuthState>()(
             role: "student" as const,
             title: null,
             isBlocked: false,
+            isChatBlocked: false,
             unlockedCourseIds: [] as string[],
             activeCourseId: null,
           };
@@ -144,7 +149,7 @@ export const useAuthStore = create<AuthState>()(
           await Promise.all([
             supabase
               .from("profiles")
-              .select("email, full_name, role, title, is_blocked")
+              .select("email, full_name, role, title, is_blocked, is_chat_blocked")
               .eq("id", user.id)
               .maybeSingle(),
             fetchUnlockedCourseIds(user.id),
@@ -163,6 +168,7 @@ export const useAuthStore = create<AuthState>()(
               ? "المنظم"
               : null);
         const isBlocked = Boolean(profile?.is_blocked);
+        const isChatBlocked = Boolean(profile?.is_chat_blocked);
 
         const prevActive = get().activeCourseId;
         const activeCourseId =
@@ -183,6 +189,7 @@ export const useAuthStore = create<AuthState>()(
           role,
           title,
           isBlocked,
+          isChatBlocked,
           unlockedCourseIds: unlocked,
           activeCourseId,
         };
@@ -214,6 +221,7 @@ export const useAuthStore = create<AuthState>()(
           role: flags.role,
           title: flags.title,
           isBlocked: flags.isBlocked,
+          isChatBlocked: flags.isChatBlocked,
         });
       },
       logout: async () => {
@@ -226,6 +234,7 @@ export const useAuthStore = create<AuthState>()(
           role: "student" as const,
           title: null,
           isBlocked: false,
+          isChatBlocked: false,
           unlockedCourseIds: [] as string[],
           activeCourseId: null,
         };
@@ -234,8 +243,8 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      // v8: staff master key — refresh unlocks + role from DB
-      name: "af-academy-auth-v8",
+      // v9: chat mute + admin overhaul
+      name: "af-academy-auth-v9",
       skipHydration: true,
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,
@@ -245,6 +254,7 @@ export const useAuthStore = create<AuthState>()(
         role: state.role,
         title: state.title,
         isBlocked: state.isBlocked,
+        isChatBlocked: state.isChatBlocked,
         unlockedCourseIds: state.unlockedCourseIds,
         activeCourseId: state.activeCourseId,
       }),

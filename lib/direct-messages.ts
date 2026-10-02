@@ -208,6 +208,9 @@ export async function sendPeerMessage(input: {
   if (flags.isBlocked) {
     return { ok: false, message: "blocked" };
   }
+  if (flags.isChatBlocked) {
+    return { ok: false, message: "chat_blocked" };
+  }
 
   const content = (input.content ?? "").trim();
   const imageUrl = input.imageUrl?.trim()

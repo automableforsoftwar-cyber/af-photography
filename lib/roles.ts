@@ -9,6 +9,7 @@ export type ProfileModeration = {
   role: UserRole;
   title: string | null;
   is_blocked: boolean;
+  is_chat_blocked: boolean;
   created_at?: string;
 };
 

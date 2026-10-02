@@ -80,10 +80,11 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const isBlockedStore = useAuthStore((s) => s.isBlocked);
-  const { isStaff, role: liveRole } = useLiveStaffRole();
+  const { isStaff, role: liveRole, isChatBlocked } = useLiveStaffRole();
   const canModerate = isStaff;
   const role = liveRole;
   const isBlocked = isBlockedStore;
+  const chatMuted = isBlocked || isChatBlocked;
   const [tab, setTab] = useState<TabId>("general");
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -279,8 +280,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   }, [pickerOpen, reactPickerFor]);
 
   const send = async () => {
-    if (isBlocked) {
-      setNotice("حسابك محظور — مينفعش تبعت رسائل.");
+    if (chatMuted) {
+      setNotice("تم إيقاف حسابك من إرسال الرسائل");
       return;
     }
     if ((!draft.trim() && !file) || sending || !courseId) return;
@@ -309,8 +310,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     setSending(false);
     if (!result.ok) {
       setNotice(
-        result.message === "blocked"
-          ? "حسابك محظور — مينفعش تبعت رسائل."
+        result.message === "blocked" || result.message === "chat_blocked"
+          ? "تم إيقاف حسابك من إرسال الرسائل"
           : "مقدرناش نبعت الرسالة. تأكد إن اشتراك الكورس لسه شغال.",
       );
       return;
@@ -776,31 +777,47 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 </div>
               ) : null}
 
-              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md focus-within:border-yellow-400/35">
+              {chatMuted ? (
+                <p className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-center text-sm font-medium text-red-300">
+                  تم إيقاف حسابك من إرسال الرسائل
+                </p>
+              ) : null}
+
+              <div
+                className={`relative rounded-2xl border bg-white/5 p-3 backdrop-blur-md ${
+                  chatMuted
+                    ? "border-red-400/25 opacity-60"
+                    : "border-white/10 focus-within:border-yellow-400/35"
+                }`}
+              >
                 <textarea
                   rows={2}
                   value={draft}
+                  disabled={chatMuted}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={(event) => {
+                    if (chatMuted) return;
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
                       void send();
                     }
                   }}
                   placeholder={
-                    replyTo
-                      ? `رد على ${replyTo.author_label || "الرسالة"}…`
-                      : isPhotos
-                        ? "وصف الفريم أو تعليق…"
-                        : `رسالة إلى ${channelLabel(activeChannel?.name ?? "")}`
+                    chatMuted
+                      ? "تم إيقاف حسابك من إرسال الرسائل"
+                      : replyTo
+                        ? `رد على ${replyTo.author_label || "الرسالة"}…`
+                        : isPhotos
+                          ? "وصف الفريم أو تعليق…"
+                          : `رسالة إلى ${channelLabel(activeChannel?.name ?? "")}`
                   }
-                  className="w-full resize-none bg-transparent text-right text-sm leading-relaxed text-white outline-none placeholder:text-slate-500"
+                  className="w-full resize-none bg-transparent text-right text-sm leading-relaxed text-white outline-none placeholder:text-red-300/80 disabled:cursor-not-allowed disabled:placeholder:text-red-300"
                 />
                 <div className="mt-2 flex flex-row-reverse flex-wrap items-center justify-between gap-2">
                   <button
                     type="submit"
                     disabled={
-                      sending || isBlocked || (!draft.trim() && !file)
+                      chatMuted || sending || (!draft.trim() && !file)
                     }
                     className="rounded-full bg-yellow-400 px-4 py-1.5 text-sm font-medium text-[#050505] disabled:opacity-35"
                   >
@@ -810,13 +827,14 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                     <div className="relative" ref={pickerRef}>
                       <button
                         type="button"
+                        disabled={chatMuted}
                         onClick={() => setPickerOpen((o) => !o)}
-                        className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400"
+                        className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400 disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="إيموجي"
                       >
                         😊
                       </button>
-                      {pickerOpen ? (
+                      {pickerOpen && !chatMuted ? (
                         <div className="absolute bottom-full start-0 z-30 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
                           <EmojiPicker
                             theme={Theme.DARK}
@@ -828,12 +846,19 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         </div>
                       ) : null}
                     </div>
-                    <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:border-yellow-400/40 hover:text-yellow-400">
+                    <label
+                      className={`rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 ${
+                        chatMuted
+                          ? "cursor-not-allowed opacity-40"
+                          : "cursor-pointer hover:border-yellow-400/40 hover:text-yellow-400"
+                      }`}
+                    >
                       {file ? file.name : "ارفع من جهازك"}
                       <input
                         type="file"
                         accept="image/*"
                         className="hidden"
+                        disabled={chatMuted}
                         onChange={(e) =>
                           setFile(e.target.files?.[0] ?? null)
                         }

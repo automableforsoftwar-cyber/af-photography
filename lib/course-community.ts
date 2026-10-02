@@ -168,6 +168,9 @@ export async function sendCourseMessage(input: {
   if (flags.isBlocked) {
     return { ok: false, message: "blocked" };
   }
+  if (flags.isChatBlocked) {
+    return { ok: false, message: "chat_blocked" };
+  }
 
   const body = input.body.trim();
   const imageUrl = input.imageUrl?.trim()

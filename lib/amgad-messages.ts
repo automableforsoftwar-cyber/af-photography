@@ -57,6 +57,9 @@ export async function sendAmgadMessage(input: {
   if (flags.isBlocked) {
     return { ok: false, message: "blocked" };
   }
+  if (flags.isChatBlocked) {
+    return { ok: false, message: "chat_blocked" };
+  }
 
   const body = input.body.trim();
   if (!body && !input.imageUrl) {
