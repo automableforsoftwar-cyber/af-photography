@@ -9,17 +9,23 @@ import {
   LearningHub,
   type DashboardPanel,
 } from "@/components/dashboard/LearningHub";
+import { CoursesHub } from "@/components/dashboard/CoursesHub";
 import { useAuthStore } from "@/lib/auth-store";
 import { getModuleById } from "@/lib/content";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const ALL_PANELS: DashboardPanel[] = [
+  "learn",
   "community",
+  "challenges",
   "gallery",
   "account",
 ];
 
 const pillActions: { id: DashboardPanel; label: string }[] = [
+  { id: "learn", label: "الكورسات" },
   { id: "community", label: "المجتمع" },
+  { id: "challenges", label: "المسابقات" },
   { id: "gallery", label: "معرض الفائزين" },
   { id: "account", label: "حسابك" },
 ];
@@ -31,10 +37,10 @@ function isPanel(value: string | null): value is DashboardPanel {
 export function CourseDashboardView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const hasCourse = useAuthStore((s) => s.hasCourse);
+  const { isStaff } = useLiveStaffRole();
 
   const paramCourse = searchParams.get("course");
   const panelParam = searchParams.get("panel");
@@ -52,12 +58,18 @@ export function CourseDashboardView() {
     }
   }, [preferred, activeCourseId, setActiveCourseId]);
 
+  useEffect(() => {
+    if (isStaff) {
+      router.replace("/dashboard/admin");
+    }
+  }, [isStaff, router]);
+
   const course = preferred ? getModuleById(preferred) : null;
   const hasActiveCourse = Boolean(preferred && course);
 
   const [panel, setPanel] = useState<DashboardPanel>(() => {
     if (isPanel(panelParam)) return panelParam;
-    return "community";
+    return "learn";
   });
 
   useEffect(() => {
@@ -106,15 +118,21 @@ export function CourseDashboardView() {
         </nav>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-6 pt-20 sm:px-6 lg:px-8">
-          <LearningHub
-            course={course}
-            hasActiveCourse={hasActiveCourse}
-            panel={panel}
-            onBackToLearn={() => onSelectPanel("community")}
-            onCourseUnlocked={(courseId) => {
-              setActiveCourseId(courseId);
-            }}
-          />
+          {panel === "learn" ? (
+            <CoursesHub
+              onUnlocked={(courseId) => setActiveCourseId(courseId)}
+            />
+          ) : (
+            <LearningHub
+              course={course}
+              hasActiveCourse={hasActiveCourse}
+              panel={panel}
+              onBackToLearn={() => onSelectPanel("learn")}
+              onCourseUnlocked={(courseId) => {
+                setActiveCourseId(courseId);
+              }}
+            />
+          )}
         </div>
       </div>
     </AuthGate>

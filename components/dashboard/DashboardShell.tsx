@@ -25,7 +25,9 @@ const NAV: {
   studentsOnly?: boolean;
 }[] = [
   { href: "/", label: "الرئيسية" },
+  { href: "/dashboard/courses", label: "الكورسات", studentsOnly: true },
   { href: "/dashboard/community", label: "المجتمع", studentsOnly: true },
+  { href: "/dashboard/challenges", label: "المسابقات", studentsOnly: true },
   {
     href: "/dashboard/gallery",
     label: "معرض الفائزين",
@@ -150,6 +152,18 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                       className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
                     >
                       المجتمع
+                    </Link>
+                    <Link
+                      href="/dashboard/challenges"
+                      className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                    >
+                      المسابقات
+                    </Link>
+                    <Link
+                      href="/dashboard/gallery"
+                      className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                    >
+                      معرض الفائزين
                     </Link>
                   </>
                 )}
