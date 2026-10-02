@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
+import { CommunityView } from "@/components/community/CommunityView";
+import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { useAuthStore } from "@/lib/auth-store";
+import { modules } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
 import {
   deleteCommunityPost,
@@ -19,7 +22,11 @@ import {
 import { type ProfileModeration } from "@/lib/roles";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 
-type AdminTab = "members" | "competitions" | "analytics";
+type AdminTab =
+  | "members"
+  | "analytics"
+  | "community"
+  | "gallery";
 
 type AdminDashboardProps = {
   /** When true, render inside DashboardShell (no duplicate AuthGate/nav). */
@@ -29,8 +36,11 @@ type AdminDashboardProps = {
 export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
+  const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const { ready, isStaff, role, title: myTitle } = useLiveStaffRole();
   const isInstructor = role === "instructor";
+  const courseId =
+    activeCourseId ?? modules[0]?.id ?? "photographer-eye";
 
   const [tab, setTab] = useState<AdminTab>("members");
   const [users, setUsers] = useState<ProfileModeration[]>([]);
@@ -39,6 +49,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [galleryKey, setGalleryKey] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,14 +72,13 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   useEffect(() => {
     if (!ready) return;
     if (!isStaff) {
-      router.replace("/dashboard/courses");
+      router.replace("/dashboard/community");
       return;
     }
     void load();
   }, [ready, isStaff, load, router]);
 
   useEffect(() => {
-    // Organizers must never land on analytics
     if (!isInstructor && tab === "analytics") {
       setTab("members");
     }
@@ -137,6 +147,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
           }
         : prev,
     );
+    setGalleryKey((k) => k + 1);
   };
 
   if (!ready || !isStaff) {
@@ -150,311 +161,320 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
 
   const tabs: { id: AdminTab; label: string; instructorOnly?: boolean }[] = [
     { id: "members", label: "إدارة الأعضاء" },
-    { id: "competitions", label: "المسابقات" },
     { id: "analytics", label: "تحليلات الأداء", instructorOnly: true },
+    { id: "community", label: "المجتمع" },
+    { id: "gallery", label: "معرض الفائزين" },
   ];
 
   const visibleTabs = tabs.filter((t) => !t.instructorOnly || isInstructor);
 
-  const body = (
-    <div className="relative mx-auto w-full max-w-5xl overflow-y-auto pb-8 text-right">
-          <p className="text-sm font-medium text-yellow-400">AF P Admin</p>
-          <h1 className="font-display mt-2 text-3xl font-bold text-white sm:text-4xl">
-            لوحة الإدارة
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            {myTitle ? `${myTitle} · ` : ""}
-            إدارة الأعضاء والمسابقات
-            {isInstructor ? " وتحليلات الأداء" : ""} — بدون أدوات إدارة كورسات.
-          </p>
+  const sidebar = (
+    <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-e">
+      <div className="border-b border-white/10 px-4 py-4 text-right">
+        <p className="text-xs font-medium text-yellow-400">AF P Admin</p>
+        <h1 className="mt-1 font-display text-lg font-bold text-white">
+          مركز القيادة
+        </h1>
+        <p className="mt-1 text-[0.7rem] text-slate-500">
+          {myTitle ? `${myTitle} · ` : ""}كل أدوات الإدارة في مكان واحد
+        </p>
+      </div>
+      <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-visible">
+        {visibleTabs.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-xl px-3 py-2.5 text-right text-sm font-medium transition ${
+                active
+                  ? "bg-yellow-400/15 text-yellow-400"
+                  : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
+  );
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {visibleTabs.map((t) => {
-              const active = tab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                    active
-                      ? "border-yellow-400/50 bg-yellow-400 text-[#050505]"
-                      : "border-white/10 bg-white/5 text-slate-300 hover:border-yellow-400/30 hover:text-yellow-400"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+  const panel = (
+    <div
+      className={`min-h-0 min-w-0 flex-1 text-right ${
+        tab === "community"
+          ? "flex flex-col overflow-hidden"
+          : "overflow-y-auto p-4 sm:p-6"
+      }`}
+    >
+      {notice ? (
+        <p className="mb-4 shrink-0 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-2 text-sm text-yellow-300">
+          {notice}
+        </p>
+      ) : null}
 
-          {notice ? (
-            <p className="mt-4 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-2 text-sm text-yellow-300">
-              {notice}
+      {tab === "community" ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <CommunityView courseId={courseId} />
+        </div>
+      ) : tab === "gallery" ? (
+        <div className="space-y-8">
+          <DashboardGallery key={galleryKey} manageMode />
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <h2 className="text-lg font-semibold text-white">
+              إدارة مشاركات المسابقات
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              احذف المشاركات غير الصالحة من الترتيب.
             </p>
-          ) : null}
-
-          {loading ? (
-            <p className="mt-10 text-sm text-slate-500">بنحمّل البيانات…</p>
-          ) : tab === "members" ? (
-            <section className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-                <h2 className="text-lg font-semibold text-white">
-                  الأعضاء المشتركين
-                </h2>
-                <p className="text-xs text-slate-500">{users.length} مشترك</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-right text-sm">
-                  <thead className="bg-white/5 text-xs text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">الاسم</th>
-                      <th className="px-4 py-3 font-medium">البريد</th>
-                      <th className="px-4 py-3 font-medium">الدور</th>
-                      <th className="px-4 py-3 font-medium">الحظر النهائي</th>
-                      <th className="px-4 py-3 font-medium">حظر الشات</th>
-                      <th className="px-4 py-3 font-medium">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-4 py-8 text-center text-slate-500"
-                        >
-                          مفيش مشتركين نشطين حالياً.
+            {loading ? (
+              <p className="mt-6 text-sm text-slate-500">بنحمّل…</p>
+            ) : leaderboard.length === 0 ? (
+              <p className="mt-6 text-sm text-slate-500">
+                لسه مفيش مشاركات في المسابقات.
+              </p>
+            ) : (
+              <ol className="mt-6 space-y-3">
+                {leaderboard.map((row, index) => (
+                  <li
+                    key={row.postId}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-400/15 text-sm font-bold text-yellow-400">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 text-right">
+                        <p className="truncate font-medium text-white">
+                          {row.displayName}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {row.courseTitle}
+                          {row.description ? ` · ${row.description}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-sm font-semibold text-yellow-400">
+                        {row.voteCount} صوت
+                      </span>
+                      <button
+                        type="button"
+                        title="حذف المشاركة"
+                        aria-label="حذف المشاركة"
+                        disabled={busyId === row.postId}
+                        onClick={() => void removeCompetitionEntry(row.postId)}
+                        className="rounded-lg border border-red-400/30 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      ) : loading && tab === "members" ? (
+        <p className="mt-6 text-sm text-slate-500">بنحمّل البيانات…</p>
+      ) : tab === "members" ? (
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+            <h2 className="text-lg font-semibold text-white">
+              الأعضاء المشتركين
+            </h2>
+            <p className="text-xs text-slate-500">{users.length} مشترك</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-right text-sm">
+              <thead className="bg-white/5 text-xs text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">الاسم</th>
+                  <th className="px-4 py-3 font-medium">البريد</th>
+                  <th className="px-4 py-3 font-medium">الدور</th>
+                  <th className="px-4 py-3 font-medium">الحظر النهائي</th>
+                  <th className="px-4 py-3 font-medium">حظر الشات</th>
+                  <th className="px-4 py-3 font-medium">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-8 text-center text-slate-500"
+                    >
+                      مفيش مشتركين نشطين حالياً.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u) => {
+                    const name = pickDisplayName(u.full_name, u.email);
+                    return (
+                      <tr
+                        key={u.id}
+                        className="border-t border-white/10 text-slate-300"
+                      >
+                        <td className="px-4 py-3 font-medium text-white">
+                          {name}
+                        </td>
+                        <td className="px-4 py-3">{u.email || "—"}</td>
+                        <td className="px-4 py-3">{u.role}</td>
+                        <td className="px-4 py-3">
+                          {u.is_blocked ? (
+                            <span className="text-red-400">محظور</span>
+                          ) : (
+                            <span className="text-emerald-400">نشط</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {u.is_chat_blocked ? (
+                            <span className="text-orange-400">مكتوم</span>
+                          ) : (
+                            <span className="text-emerald-400">مسموح</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={busyId === u.id || u.id === userId}
+                              onClick={() => void toggleTotalBlock(u)}
+                              className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-40"
+                            >
+                              {busyId === u.id
+                                ? "…"
+                                : u.is_blocked
+                                  ? "إلغاء الحظر النهائي"
+                                  : "حظر نهائي"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                busyId === `${u.id}:chat` || u.id === userId
+                              }
+                              onClick={() => void toggleChatMute(u)}
+                              className="rounded-full border border-orange-400/30 px-3 py-1.5 text-xs text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-40"
+                            >
+                              {busyId === `${u.id}:chat`
+                                ? "…"
+                                : u.is_chat_blocked
+                                  ? "إلغاء حظر الشات"
+                                  : "حظر الشات"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ) : (
-                      users.map((u) => {
-                        const name = pickDisplayName(u.full_name, u.email);
-                        return (
-                          <tr
-                            key={u.id}
-                            className="border-t border-white/10 text-slate-300"
-                          >
-                            <td className="px-4 py-3 font-medium text-white">
-                              {name}
-                            </td>
-                            <td className="px-4 py-3">{u.email || "—"}</td>
-                            <td className="px-4 py-3">{u.role}</td>
-                            <td className="px-4 py-3">
-                              {u.is_blocked ? (
-                                <span className="text-red-400">محظور</span>
-                              ) : (
-                                <span className="text-emerald-400">نشط</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              {u.is_chat_blocked ? (
-                                <span className="text-orange-400">مكتوم</span>
-                              ) : (
-                                <span className="text-emerald-400">مسموح</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap justify-end gap-2">
-                                <button
-                                  type="button"
-                                  disabled={
-                                    busyId === u.id || u.id === userId
-                                  }
-                                  onClick={() => void toggleTotalBlock(u)}
-                                  className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-40"
-                                >
-                                  {busyId === u.id
-                                    ? "…"
-                                    : u.is_blocked
-                                      ? "إلغاء الحظر النهائي"
-                                      : "حظر نهائي"}
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={
-                                    busyId === `${u.id}:chat` ||
-                                    u.id === userId
-                                  }
-                                  onClick={() => void toggleChatMute(u)}
-                                  className="rounded-full border border-orange-400/30 px-3 py-1.5 text-xs text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-40"
-                                >
-                                  {busyId === `${u.id}:chat`
-                                    ? "…"
-                                    : u.is_chat_blocked
-                                      ? "إلغاء حظر الشات"
-                                      : "حظر الشات"}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ) : tab === "competitions" ? (
-            <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <h2 className="text-lg font-semibold text-white">
-                ترتيب المسابقات
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                أعلى المشاركات حسب عدد الأصوات.
-              </p>
-              {leaderboard.length === 0 ? (
-                <p className="mt-6 text-sm text-slate-500">
-                  لسه مفيش مشاركات في المسابقات.
-                </p>
-              ) : (
-                <ol className="mt-6 space-y-3">
-                  {leaderboard.map((row, index) => (
-                    <li
-                      key={row.postId}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-400/15 text-sm font-bold text-yellow-400">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 text-right">
-                          <p className="truncate font-medium text-white">
-                            {row.displayName}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">
-                            {row.courseTitle}
-                            {row.description ? ` · ${row.description}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-sm font-semibold text-yellow-400">
-                          {row.voteCount} صوت
-                        </span>
-                        <button
-                          type="button"
-                          title="حذف المشاركة"
-                          aria-label="حذف المشاركة"
-                          disabled={busyId === row.postId}
-                          onClick={() => void removeCompetitionEntry(row.postId)}
-                          className="rounded-lg border border-red-400/30 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="size-4"
-                            aria-hidden
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443H3.415a.75.75 0 0 0 0 1.5h.43l.742 10.392A2.75 2.75 0 0 0 7.33 18.5h5.34a2.75 2.75 0 0 0 2.743-2.415l.742-10.392h.43a.75.75 0 0 0 0-1.5H14v-.443A2.75 2.75 0 0 0 11.25 1h-2.5ZM9.5 3.75c0-.69.56-1.25 1.25-1.25h.5c.69 0 1.25.56 1.25 1.25v.443h-3V3.75Zm1.75 3.25a.75.75 0 0 0-1.5 0v7.5a.75.75 0 0 0 1.5 0v-7.5Zm2.5.75a.75.75 0 0 0-1.5 0v6.5a.75.75 0 0 0 1.5 0v-6.5Zm-6.25-.75a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5a.75.75 0 0 1 .75-.75Z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          ) : isInstructor && analytics ? (
-            <div className="mt-8 space-y-6">
-              <section className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-right">
-                  <p className="text-xs text-slate-500">طلاب لهم تقدّم مسجّل</p>
-                  <p className="mt-2 font-display text-3xl font-bold text-white">
-                    {analytics.totalStudentsWithProgress}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-right">
-                  <p className="text-xs text-slate-500">
-                    متوسط الدروس المكتملة
-                  </p>
-                  <p className="mt-2 font-display text-3xl font-bold text-white">
-                    {analytics.avgCompletedLessons}
-                  </p>
-                </div>
-              </section>
-
-              <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                <div className="border-b border-white/10 px-5 py-4">
-                  <h2 className="text-lg font-semibold text-white">
-                    تقدّم الطلاب في الكورسات
-                  </h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-right text-sm">
-                    <thead className="bg-white/5 text-xs text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">الطالب</th>
-                        <th className="px-4 py-3 font-medium">الكورس</th>
-                        <th className="px-4 py-3 font-medium">دروس مكتملة</th>
-                        <th className="px-4 py-3 font-medium">النقاط</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analytics.progress.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-4 py-8 text-center text-slate-500"
-                          >
-                            مفيش بيانات تقدّم بعد.
-                          </td>
-                        </tr>
-                      ) : (
-                        analytics.progress.map((row) => (
-                          <tr
-                            key={`${row.userId}-${row.courseId}`}
-                            className="border-t border-white/10 text-slate-300"
-                          >
-                            <td className="px-4 py-3 text-white">
-                              {row.displayName}
-                            </td>
-                            <td className="px-4 py-3">{row.courseTitle}</td>
-                            <td className="px-4 py-3">{row.completedCount}</td>
-                            <td className="px-4 py-3 text-yellow-400">
-                              {row.score}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <h2 className="text-lg font-semibold text-white">
-                  قاعة المشاهير
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  أعلى المشاركين عبر كل المسابقات.
-                </p>
-                {analytics.hallOfFame.length === 0 ? (
-                  <p className="mt-4 text-sm text-slate-500">لسه فاضي.</p>
-                ) : (
-                  <ol className="mt-4 space-y-2">
-                    {analytics.hallOfFame.slice(0, 10).map((row, i) => (
-                      <li
-                        key={row.postId}
-                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm"
-                      >
-                        <span className="text-slate-200">
-                          #{i + 1} {row.displayName}
-                        </span>
-                        <span className="text-yellow-400">
-                          {row.voteCount} صوت
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
+                    );
+                  })
                 )}
-              </section>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : isInstructor && analytics ? (
+        <div className="space-y-6">
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-right">
+              <p className="text-xs text-slate-500">طلاب لهم تقدّم مسجّل</p>
+              <p className="mt-2 font-display text-3xl font-bold text-white">
+                {analytics.totalStudentsWithProgress}
+              </p>
             </div>
-          ) : null}
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-right">
+              <p className="text-xs text-slate-500">متوسط الدروس المكتملة</p>
+              <p className="mt-2 font-display text-3xl font-bold text-white">
+                {analytics.avgCompletedLessons}
+              </p>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+            <div className="border-b border-white/10 px-5 py-4">
+              <h2 className="text-lg font-semibold text-white">
+                تقدّم الطلاب في الكورسات
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-right text-sm">
+                <thead className="bg-white/5 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">الطالب</th>
+                    <th className="px-4 py-3 font-medium">الكورس</th>
+                    <th className="px-4 py-3 font-medium">دروس مكتملة</th>
+                    <th className="px-4 py-3 font-medium">النقاط</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analytics.progress.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-4 py-8 text-center text-slate-500"
+                      >
+                        مفيش بيانات تقدّم بعد.
+                      </td>
+                    </tr>
+                  ) : (
+                    analytics.progress.map((row) => (
+                      <tr
+                        key={`${row.userId}-${row.courseId}`}
+                        className="border-t border-white/10 text-slate-300"
+                      >
+                        <td className="px-4 py-3 text-white">
+                          {row.displayName}
+                        </td>
+                        <td className="px-4 py-3">{row.courseTitle}</td>
+                        <td className="px-4 py-3">{row.completedCount}</td>
+                        <td className="px-4 py-3 text-yellow-400">
+                          {row.score}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <h2 className="text-lg font-semibold text-white">قاعة المشاهير</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              أعلى المشاركين عبر كل المسابقات.
+            </p>
+            {analytics.hallOfFame.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">لسه فاضي.</p>
+            ) : (
+              <ol className="mt-4 space-y-2">
+                {analytics.hallOfFame.slice(0, 10).map((row, i) => (
+                  <li
+                    key={row.postId}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm"
+                  >
+                    <span className="text-slate-200">
+                      #{i + 1} {row.displayName}
+                    </span>
+                    <span className="text-yellow-400">
+                      {row.voteCount} صوت
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-slate-500">بنحمّل البيانات…</p>
+      )}
+    </div>
+  );
+
+  const body = (
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 backdrop-blur-xl lg:flex-row">
+      {sidebar}
+      {panel}
     </div>
   );
 
@@ -464,7 +484,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
 
   return (
     <AuthGate>
-      <div className="relative min-h-svh overflow-x-clip bg-[#050505] px-4 pb-12 pt-20 sm:px-6 lg:px-8">
+      <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505] px-4 pb-6 pt-20 sm:px-6 lg:px-8">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]"
@@ -477,21 +497,9 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
             >
               الرئيسية
             </Link>
-            <Link
-              href="/dashboard/community"
-              className="text-sm text-slate-400 transition hover:text-yellow-400"
-            >
-              المجتمع
-            </Link>
             <span className="text-sm font-semibold text-yellow-400">
               الإدارة
             </span>
-            <Link
-              href="/dashboard/gallery"
-              className="text-sm text-slate-400 transition hover:text-yellow-400"
-            >
-              معرض الفائزين
-            </Link>
             <Link
               href="/dashboard/account"
               className="text-sm text-slate-400 transition hover:text-yellow-400"
@@ -500,8 +508,26 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
             </Link>
           </div>
         </nav>
-        {body}
+        <div className="relative flex min-h-0 flex-1 flex-col">{body}</div>
       </div>
     </AuthGate>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="size-4"
+      aria-hidden
+    >
+      <path
+        fillRule="evenodd"
+        d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443H3.415a.75.75 0 0 0 0 1.5h.43l.742 10.392A2.75 2.75 0 0 0 7.33 18.5h5.34a2.75 2.75 0 0 0 2.743-2.415l.742-10.392h.43a.75.75 0 0 0 0-1.5H14v-.443A2.75 2.75 0 0 0 11.25 1h-2.5ZM9.5 3.75c0-.69.56-1.25 1.25-1.25h.5c.69 0 1.25.56 1.25 1.25v.443h-3V3.75Zm1.75 3.25a.75.75 0 0 0-1.5 0v7.5a.75.75 0 0 0 1.5 0v-7.5Zm2.5.75a.75.75 0 0 0-1.5 0v6.5a.75.75 0 0 0 1.5 0v-6.5Zm-6.25-.75a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5a.75.75 0 0 1 .75-.75Z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }

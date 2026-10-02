@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
@@ -16,10 +17,20 @@ import { modules, site } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 
-const NAV: { href: string; label: string; staffOnly?: boolean }[] = [
+const NAV: {
+  href: string;
+  label: string;
+  staffOnly?: boolean;
+  /** Hide from instructor/organizer — they use Admin Command Center instead. */
+  studentsOnly?: boolean;
+}[] = [
   { href: "/", label: "الرئيسية" },
-  { href: "/dashboard/community", label: "المجتمع" },
-  { href: "/dashboard/gallery", label: "معرض الفائزين" },
+  { href: "/dashboard/community", label: "المجتمع", studentsOnly: true },
+  {
+    href: "/dashboard/gallery",
+    label: "معرض الفائزين",
+    studentsOnly: true,
+  },
   { href: "/dashboard/admin", label: "الإدارة", staffOnly: true },
   { href: "/dashboard/account", label: "حسابك" },
 ];
@@ -48,7 +59,19 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const welcomeName = pickDisplayName(fullName, email);
   const { isStaff, title: staffTitle } = useLiveStaffRole();
   const showAdmin = isStaff;
-  const navItems = NAV.filter((item) => !item.staffOnly || showAdmin);
+  const navItems = NAV.filter((item) => {
+    if (item.staffOnly && !showAdmin) return false;
+    if (item.studentsOnly && showAdmin) return false;
+    return true;
+  });
+
+  // Staff opening Community/Gallery routes → Admin Command Center
+  useEffect(() => {
+    if (!isStaff) return;
+    if (section === "community" || section === "gallery") {
+      router.replace("/dashboard/admin");
+    }
+  }, [isStaff, section, router]);
 
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
@@ -107,26 +130,29 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 شاشة كود الـ VIP جوه صفحة الكورس.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                <Link
-                  href="/dashboard/courses"
-                  className="rounded-full border border-yellow-400/50 bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
-                >
-                  الكورسات وتفعيل الكود
-                </Link>
-                <Link
-                  href="/dashboard/community"
-                  className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
-                >
-                  المجتمع
-                </Link>
                 {showAdmin ? (
                   <Link
                     href="/dashboard/admin"
-                    className="rounded-full border border-yellow-400/40 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505]"
+                    className="rounded-full border border-yellow-400/50 bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
                   >
                     لوحة الإدارة{staffTitle ? ` · ${staffTitle}` : ""}
                   </Link>
-                ) : null}
+                ) : (
+                  <>
+                    <Link
+                      href="/dashboard/courses"
+                      className="rounded-full border border-yellow-400/50 bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
+                    >
+                      الكورسات وتفعيل الكود
+                    </Link>
+                    <Link
+                      href="/dashboard/community"
+                      className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                    >
+                      المجتمع
+                    </Link>
+                  </>
+                )}
               </div>
               {unlockedCourseIds.length > 0 || isStaff ? (
                 <p className="mt-6 text-xs text-slate-500">
