@@ -138,6 +138,28 @@ export async function setUserBlocked(
     return { ok: false, message: "forbidden" };
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id === userId) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const targetRole = normalizeRole(target?.role);
+  // Only the instructor may block/unblock organizers (or another instructor)
+  if (isStaffRole(targetRole) && flags.role !== "instructor") {
+    return { ok: false, message: "forbidden" };
+  }
+  if (targetRole === "instructor") {
+    return { ok: false, message: "forbidden" };
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({ is_blocked: blocked })

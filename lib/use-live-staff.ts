@@ -16,6 +16,7 @@ export type LiveStaffState = {
 
 /**
  * Failsafe: always re-read role/title/blocks from profiles (ignores stale Zustand).
+ * Polls periodically so demotion / global block take effect without a hard refresh.
  */
 export function useLiveStaffRole(): LiveStaffState {
   const userId = useAuthStore((s) => s.userId);
@@ -79,6 +80,7 @@ export function useLiveStaffRole(): LiveStaffState {
     };
 
     void load();
+    const interval = window.setInterval(() => void load(), 20_000);
 
     const onVis = () => {
       if (document.visibilityState === "visible") void load();
@@ -86,6 +88,7 @@ export function useLiveStaffRole(): LiveStaffState {
     document.addEventListener("visibilitychange", onVis);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [userId]);

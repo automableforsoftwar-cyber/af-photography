@@ -61,7 +61,6 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
       fetchSubscribedProfilesForAdmin(),
       fetchCompetitionLeaderboard(40),
     ]);
-    setUsers(list);
     setLeaderboard(board);
 
     if (isInstructor) {
@@ -71,9 +70,16 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
       ]);
       setAnalytics(stats);
       setOrganizers(orgs);
+      // Ensure organizers appear in the members table even without VIP enrollment
+      const byId = new Map(list.map((u) => [u.id, u]));
+      for (const o of orgs) {
+        byId.set(o.id, o);
+      }
+      setUsers(Array.from(byId.values()));
     } else {
       setAnalytics(null);
       setOrganizers([]);
+      setUsers(list);
     }
     setLoading(false);
   }, [isInstructor]);
@@ -107,6 +113,11 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
       return;
     }
     setUsers((prev) =>
+      prev.map((u) =>
+        u.id === profile.id ? { ...u, is_blocked: !profile.is_blocked } : u,
+      ),
+    );
+    setOrganizers((prev) =>
       prev.map((u) =>
         u.id === profile.id ? { ...u, is_blocked: !profile.is_blocked } : u,
       ),
@@ -379,18 +390,33 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                           <p className="font-medium text-white">{name}</p>
                           <p className="truncate text-xs text-slate-500">
                             {o.email || "—"} · {o.title || "المنظم"}
+                            {o.is_blocked ? " · محظور" : ""}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          disabled={busyId === `${o.id}:demote`}
-                          onClick={() => void demoteUser(o)}
-                          className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 transition hover:border-red-400/40 hover:text-red-300 disabled:opacity-40"
-                        >
-                          {busyId === `${o.id}:demote`
-                            ? "…"
-                            : "إلغاء الترقية"}
-                        </button>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={busyId === `${o.id}:demote`}
+                            onClick={() => void demoteUser(o)}
+                            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 transition hover:border-red-400/40 hover:text-red-300 disabled:opacity-40"
+                          >
+                            {busyId === `${o.id}:demote`
+                              ? "…"
+                              : "إلغاء الترقية"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === o.id}
+                            onClick={() => void toggleTotalBlock(o)}
+                            className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-40"
+                          >
+                            {busyId === o.id
+                              ? "…"
+                              : o.is_blocked
+                                ? "إلغاء الحظر النهائي"
+                                : "حظر نهائي"}
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
@@ -435,6 +461,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                       isInstructor &&
                       u.role === "student" &&
                       u.id !== userId;
+                    const canDemote =
+                      isInstructor &&
+                      u.role === "organizer" &&
+                      u.id !== userId;
                     return (
                       <tr
                         key={u.id}
@@ -473,9 +503,25 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                                   : "ترقية لمنظم"}
                               </button>
                             ) : null}
+                            {canDemote ? (
+                              <button
+                                type="button"
+                                disabled={busyId === `${u.id}:demote`}
+                                onClick={() => void demoteUser(u)}
+                                className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 transition hover:border-red-400/40 hover:text-red-300 disabled:opacity-40"
+                              >
+                                {busyId === `${u.id}:demote`
+                                  ? "…"
+                                  : "إلغاء الترقية"}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
-                              disabled={busyId === u.id || u.id === userId}
+                              disabled={
+                                busyId === u.id ||
+                                u.id === userId ||
+                                u.role === "instructor"
+                              }
                               onClick={() => void toggleTotalBlock(u)}
                               className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-40"
                             >
@@ -488,7 +534,9 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                             <button
                               type="button"
                               disabled={
-                                busyId === `${u.id}:chat` || u.id === userId
+                                busyId === `${u.id}:chat` ||
+                                u.id === userId ||
+                                u.role === "instructor"
                               }
                               onClick={() => void toggleChatMute(u)}
                               className="rounded-full border border-orange-400/30 px-3 py-1.5 text-xs text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-40"

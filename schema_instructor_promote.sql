@@ -29,17 +29,26 @@ BEGIN
     NEW.role := OLD.role;
     NEW.title := OLD.title;
     NEW.is_blocked := OLD.is_blocked;
-    IF TG_OP = 'UPDATE' AND NEW.is_chat_blocked IS DISTINCT FROM OLD.is_chat_blocked THEN
+    IF NEW.is_chat_blocked IS DISTINCT FROM OLD.is_chat_blocked THEN
       NEW.is_chat_blocked := OLD.is_chat_blocked;
     END IF;
     RETURN NEW;
   END IF;
 
-  -- Organizers: mute/block only — cannot change roles
+  -- Organizers: cannot change roles/titles; cannot block/unblock staff
   IF NOT public.is_instructor() THEN
     NEW.role := OLD.role;
     NEW.title := OLD.title;
+    IF OLD.role IN ('instructor', 'organizer')
+       AND NEW.is_blocked IS DISTINCT FROM OLD.is_blocked THEN
+      NEW.is_blocked := OLD.is_blocked;
+    END IF;
     RETURN NEW;
+  END IF;
+
+  -- Instructor: never block yourself
+  IF NEW.id = auth.uid() AND NEW.is_blocked IS DISTINCT FROM OLD.is_blocked THEN
+    NEW.is_blocked := OLD.is_blocked;
   END IF;
 
   RETURN NEW;
