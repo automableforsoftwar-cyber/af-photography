@@ -393,8 +393,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "general", label: "#عام" },
+    { id: "announcements", label: "#الإعلانات" },
     { id: "photos", label: "#الصور" },
-    { id: "announcements", label: "#إعلانات" },
     {
       id: "inbox",
       label: isStaff ? "صندوق الوارد" : "أمجد فريد",

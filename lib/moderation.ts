@@ -171,6 +171,80 @@ export async function setUserChatBlocked(
   return { ok: true };
 }
 
+/** Instructor only: promote a student to organizer. */
+export async function promoteToOrganizer(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const flags = await fetchMyProfileFlags();
+  if (flags.role !== "instructor" || flags.isBlocked) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role: "organizer", title: "المنظم" })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("promoteToOrganizer:", error);
+    return { ok: false, message: "update_failed" };
+  }
+  return { ok: true };
+}
+
+/** Instructor only: demote an organizer back to student. */
+export async function demoteOrganizer(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const flags = await fetchMyProfileFlags();
+  if (flags.role !== "instructor" || flags.isBlocked) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role: "student", title: null })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("demoteOrganizer:", error);
+    return { ok: false, message: "update_failed" };
+  }
+  return { ok: true };
+}
+
+/** All organizer profiles (for instructor team panel). */
+export async function fetchOrganizersForInstructor(): Promise<
+  ProfileModeration[]
+> {
+  const flags = await fetchMyProfileFlags();
+  if (flags.role !== "instructor") return [];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "id, email, full_name, role, title, is_blocked, is_chat_blocked, created_at",
+    )
+    .eq("role", "organizer")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("fetchOrganizersForInstructor:", error);
+    return [];
+  }
+
+  return ((data ?? []) as ProfileModeration[]).map((p) => {
+    const role = normalizeRole(p.role);
+    return {
+      ...p,
+      role,
+      title: p.title?.trim() || titleForRole(role),
+      is_blocked: Boolean(p.is_blocked),
+      is_chat_blocked: Boolean(p.is_chat_blocked),
+    };
+  });
+}
+
 export async function fetchAllProfilesForAdmin(): Promise<ProfileModeration[]> {
   const { data, error } = await supabase
     .from("profiles")

@@ -45,14 +45,14 @@ export const channels: CommunityChannel[] = [
     topic: "نقاش نصي عام عن الكورس والدروس",
   },
   {
+    id: "announcements",
+    name: "الإعلانات",
+    topic: "إعلانات رسمية من الإدارة — للطلاب للقراءة فقط",
+  },
+  {
     id: "photos",
     name: "الصور",
     topic: "شارك فريماتك واطلب رأي الزملاء",
-  },
-  {
-    id: "announcements",
-    name: "إعلانات",
-    topic: "إعلانات رسمية من الإدارة — للطلاب للقراءة فقط",
   },
 ];
 

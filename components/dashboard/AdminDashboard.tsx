@@ -11,9 +11,12 @@ import { modules } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
 import {
   deleteCommunityPost,
+  demoteOrganizer,
   fetchCompetitionLeaderboard,
   fetchInstructorAnalytics,
+  fetchOrganizersForInstructor,
   fetchSubscribedProfilesForAdmin,
+  promoteToOrganizer,
   setUserBlocked,
   setUserChatBlocked,
   type CompetitionLeaderRow,
@@ -44,6 +47,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
 
   const [tab, setTab] = useState<AdminTab>("members");
   const [users, setUsers] = useState<ProfileModeration[]>([]);
+  const [organizers, setOrganizers] = useState<ProfileModeration[]>([]);
   const [leaderboard, setLeaderboard] = useState<CompetitionLeaderRow[]>([]);
   const [analytics, setAnalytics] = useState<InstructorAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,10 +65,15 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
     setLeaderboard(board);
 
     if (isInstructor) {
-      const stats = await fetchInstructorAnalytics();
+      const [stats, orgs] = await Promise.all([
+        fetchInstructorAnalytics(),
+        fetchOrganizersForInstructor(),
+      ]);
       setAnalytics(stats);
+      setOrganizers(orgs);
     } else {
       setAnalytics(null);
+      setOrganizers([]);
     }
     setLoading(false);
   }, [isInstructor]);
@@ -148,6 +157,63 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
         : prev,
     );
     setGalleryKey((k) => k + 1);
+  };
+
+  const promoteUser = async (profile: ProfileModeration) => {
+    if (!isInstructor) return;
+    if (profile.id === userId) {
+      setNotice("مينفعش ترقّي حسابك.");
+      return;
+    }
+    if (profile.role !== "student") {
+      setNotice("الترقية للطلاب فقط.");
+      return;
+    }
+    setBusyId(`${profile.id}:promote`);
+    setNotice(null);
+    const result = await promoteToOrganizer(profile.id);
+    setBusyId(null);
+    if (!result.ok) {
+      setNotice("مقدرناش نرقّي العضو لمنظم. تأكد إنك المدرب.");
+      return;
+    }
+    const promoted: ProfileModeration = {
+      ...profile,
+      role: "organizer",
+      title: "المنظم",
+    };
+    setUsers((prev) =>
+      prev.map((u) => (u.id === profile.id ? promoted : u)),
+    );
+    setOrganizers((prev) => {
+      if (prev.some((o) => o.id === profile.id)) return prev;
+      return [promoted, ...prev];
+    });
+    setNotice(`تم ترقية ${pickDisplayName(profile.full_name, profile.email)} لمنظم.`);
+  };
+
+  const demoteUser = async (profile: ProfileModeration) => {
+    if (!isInstructor) return;
+    if (profile.id === userId) return;
+    setBusyId(`${profile.id}:demote`);
+    setNotice(null);
+    const result = await demoteOrganizer(profile.id);
+    setBusyId(null);
+    if (!result.ok) {
+      setNotice("مقدرناش نلغي ترقية المنظم.");
+      return;
+    }
+    setOrganizers((prev) => prev.filter((o) => o.id !== profile.id));
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === profile.id
+          ? { ...u, role: "student", title: null }
+          : u,
+      ),
+    );
+    setNotice(
+      `تم إرجاع ${pickDisplayName(profile.full_name, profile.email)} لطالب.`,
+    );
   };
 
   if (!ready || !isStaff) {
@@ -280,7 +346,60 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
       ) : loading && tab === "members" ? (
         <p className="mt-6 text-sm text-slate-500">بنحمّل البيانات…</p>
       ) : tab === "members" ? (
-        <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+        <div className="space-y-6">
+          {isInstructor ? (
+            <section className="overflow-hidden rounded-2xl border border-yellow-400/20 bg-yellow-400/5">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-yellow-400/15 px-5 py-4">
+                <div className="text-right">
+                  <h2 className="text-lg font-semibold text-white">
+                    المنظمين معك
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    فريق الإدارة الحالي — ترقّي الطلاب من الجدول تحت.
+                  </p>
+                </div>
+                <p className="text-xs text-yellow-400/90">
+                  {organizers.length} منظم
+                </p>
+              </div>
+              {organizers.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-slate-500">
+                  لسه مفيش منظمين — رقّي طالب من جدول الأعضاء.
+                </p>
+              ) : (
+                <ul className="divide-y divide-white/10">
+                  {organizers.map((o) => {
+                    const name = pickDisplayName(o.full_name, o.email);
+                    return (
+                      <li
+                        key={o.id}
+                        className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"
+                      >
+                        <div className="min-w-0 text-right">
+                          <p className="font-medium text-white">{name}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {o.email || "—"} · {o.title || "المنظم"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busyId === `${o.id}:demote`}
+                          onClick={() => void demoteUser(o)}
+                          className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 transition hover:border-red-400/40 hover:text-red-300 disabled:opacity-40"
+                        >
+                          {busyId === `${o.id}:demote`
+                            ? "…"
+                            : "إلغاء الترقية"}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
+          <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
             <h2 className="text-lg font-semibold text-white">
               الأعضاء المشتركين
@@ -312,6 +431,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                 ) : (
                   users.map((u) => {
                     const name = pickDisplayName(u.full_name, u.email);
+                    const canPromote =
+                      isInstructor &&
+                      u.role === "student" &&
+                      u.id !== userId;
                     return (
                       <tr
                         key={u.id}
@@ -338,6 +461,18 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap justify-end gap-2">
+                            {canPromote ? (
+                              <button
+                                type="button"
+                                disabled={busyId === `${u.id}:promote`}
+                                onClick={() => void promoteUser(u)}
+                                className="rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1.5 text-xs font-medium text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] disabled:opacity-40"
+                              >
+                                {busyId === `${u.id}:promote`
+                                  ? "…"
+                                  : "ترقية لمنظم"}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               disabled={busyId === u.id || u.id === userId}
@@ -374,6 +509,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
             </table>
           </div>
         </section>
+        </div>
       ) : isInstructor && analytics ? (
         <div className="space-y-6">
           <section className="grid gap-4 sm:grid-cols-2">
