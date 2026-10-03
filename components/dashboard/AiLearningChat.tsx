@@ -5,9 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import type { CourseModule } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 import {
+  fetchChatbotHistory,
+  fetchChatbotSessionId,
+  saveChatbotMessage,
+  upsertChatbotSession,
+} from "@/lib/chatbot-history";
+import {
   getOrCreateAssistantSessionId,
+  persistAssistantSessionId,
   sendAssistantMessage,
   type AssistantContext,
+  N8N_WORKFLOW_NAMES,
 } from "@/lib/n8n-assistant";
 import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 
@@ -36,9 +44,15 @@ const item = {
   },
 };
 
+function welcomeText(scope: AssistantContext, courseTitle: string) {
+  return scope === "community"
+    ? `أهلاً بيك في مساعد المجتمع لمسار «${courseTitle}». اسأل عن الدروس، التصوير، أو أي فكرة — وهرد عليك فوراً.`
+    : `أهلاً بيك في مسار «${courseTitle}». هنا بتتعلّم بالمحادثة — اسألني عن أي مفهوم، تمرين، أو فكرة، وهجاوبك باللهجة المصرية وبخطوات واضحة.`;
+}
+
 type AiLearningChatProps = {
   course: CourseModule;
-  /** community = assistant opened from Community; learning = Start Learning */
+  /** community = Community only; learning = Start Learning (CourseRoom) only */
   scope?: AssistantContext;
   onBackToCommunity?: () => void;
 };
@@ -48,50 +62,117 @@ export function AiLearningChat({
   scope = "learning",
   onBackToCommunity,
 }: AiLearningChatProps) {
-  const userId = useAuthStore((s) => s.userId) ?? "anon";
+  const userId = useAuthStore((s) => s.userId) ?? "";
   const [sessionId, setSessionId] = useState(() =>
     getOrCreateAssistantSessionId({
       scope,
-      userId,
+      userId: userId || "anon",
       courseId: course.id,
     }),
   );
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "welcome",
-      role: "ai",
-      text:
-        scope === "community"
-          ? `أهلاً بيك في مساعد المجتمع لمسار «${course.title}». اسأل عن الدروس، التصوير، أو أي فكرة — وهرد عليك فوراً.`
-          : `أهلاً بيك في مسار «${course.title}». هنا بتتعلّم بالمحادثة — اسألني عن أي مفهوم، تمرين، أو فكرة، وهجاوبك باللهجة المصرية وبخطوات واضحة.`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [historyReady, setHistoryReady] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<RtlScrollHandle>(null);
 
   useEffect(() => {
-    const sid = getOrCreateAssistantSessionId({
-      scope,
-      userId,
-      courseId: course.id,
-    });
-    setSessionId(sid);
-  }, [scope, userId, course.id]);
+    let cancelled = false;
+
+    const boot = async () => {
+      setHistoryReady(false);
+
+      const localSid = getOrCreateAssistantSessionId({
+        scope,
+        userId: userId || "anon",
+        courseId: course.id,
+      });
+
+      let sid = localSid;
+      if (userId) {
+        const stored = await fetchChatbotSessionId({
+          userId,
+          scope,
+          courseId: course.id,
+        });
+        if (stored) {
+          sid = stored;
+          persistAssistantSessionId({
+            scope,
+            userId,
+            courseId: course.id,
+            sessionId: stored,
+          });
+        } else {
+          await upsertChatbotSession({
+            userId,
+            scope,
+            courseId: course.id,
+            sessionId: sid,
+          });
+        }
+      }
+
+      if (cancelled) return;
+      setSessionId(sid);
+
+      if (userId) {
+        const history = await fetchChatbotHistory({
+          userId,
+          scope,
+          courseId: course.id,
+        });
+        if (cancelled) return;
+        if (history.length > 0) {
+          setMessages(
+            history.map((row) => ({
+              id: row.id,
+              role: row.role === "user" ? "user" : "ai",
+              text: row.content,
+            })),
+          );
+        } else {
+          setMessages([
+            {
+              id: "welcome",
+              role: "ai",
+              text: welcomeText(scope, course.title),
+            },
+          ]);
+        }
+      } else {
+        setMessages([
+          {
+            id: "welcome",
+            role: "ai",
+            text: welcomeText(scope, course.title),
+          },
+        ]);
+      }
+
+      if (!cancelled) setHistoryReady(true);
+    };
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, userId, course.id, course.title]);
 
   useEffect(() => {
+    if (!historyReady) return;
     const id = window.setTimeout(() => {
       scrollRef.current?.scrollToBottom(
         messages.length <= 2 ? "auto" : "smooth",
       );
     }, 40);
     return () => window.clearTimeout(id);
-  }, [messages.length, sending]);
+  }, [messages.length, sending, historyReady]);
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || sending) return;
+    if (!text || sending || !historyReady) return;
 
     const userMsg: Msg = {
       id: `u-${Date.now()}`,
@@ -102,28 +183,65 @@ export function AiLearningChat({
     setDraft("");
     setSending(true);
 
+    if (userId) {
+      void saveChatbotMessage({
+        userId,
+        scope,
+        courseId: course.id,
+        sessionId,
+        role: "user",
+        content: text,
+      });
+    }
+
     const result = await sendAssistantMessage({
       message: text,
       scope,
-      userId,
+      userId: userId || "anon",
       courseId: course.id,
       sessionId,
     });
 
-    if (result.sessionId) {
-      setSessionId(result.sessionId);
+    const nextSid = result.sessionId || sessionId;
+    if (nextSid && nextSid !== sessionId) {
+      setSessionId(nextSid);
     }
+
+    if (userId && nextSid) {
+      void upsertChatbotSession({
+        userId,
+        scope,
+        courseId: course.id,
+        sessionId: nextSid,
+      });
+    }
+
+    const aiText = result.ok
+      ? result.message
+      : result.message || "المساعد مش متاح دلوقتي.";
 
     const aiMsg: Msg = {
       id: `a-${Date.now()}`,
       role: "ai",
-      text: result.ok
-        ? result.message
-        : result.message || "المساعد مش متاح دلوقتي.",
+      text: aiText,
     };
     setMessages((prev) => [...prev, aiMsg]);
+
+    if (userId && nextSid) {
+      void saveChatbotMessage({
+        userId,
+        scope,
+        courseId: course.id,
+        sessionId: nextSid,
+        role: "assistant",
+        content: aiText,
+      });
+    }
+
     setSending(false);
   };
+
+  const workflowLabel = N8N_WORKFLOW_NAMES[scope];
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
@@ -137,7 +255,7 @@ export function AiLearningChat({
               {course.title}
             </h1>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              محادثة ذكية مع ذاكرة جلسة محفوظة
+              محادثة محفوظة · {workflowLabel}
             </p>
           </div>
           {onBackToCommunity ? (
@@ -153,42 +271,48 @@ export function AiLearningChat({
       </header>
 
       <RtlScroll ref={scrollRef} className="min-h-0 flex-1">
-        <motion.div
-          variants={list}
-          initial="hidden"
-          animate="show"
-          className="space-y-3 px-3 py-4 sm:px-6 sm:py-5"
-        >
-          {messages.map((msg) => {
-            const mine = msg.role === "user";
-            return (
-              <motion.div
-                key={msg.id}
-                variants={item}
-                className={`flex w-full ${mine ? "justify-start" : "justify-end"}`}
-              >
-                <div
-                  className={`max-w-[min(100%,36rem)] rounded-2xl px-4 py-3 text-start text-sm leading-relaxed ${
-                    mine
-                      ? "bg-yellow-400 text-[#050505] shadow-[0_0_24px_rgba(251,191,36,0.2)]"
-                      : "border border-white/10 bg-white/5 text-slate-200"
-                  }`}
+        {!historyReady ? (
+          <p className="px-4 py-8 text-sm text-slate-500 sm:px-6">
+            بنحمّل محادثتك السابقة…
+          </p>
+        ) : (
+          <motion.div
+            variants={list}
+            initial="hidden"
+            animate="show"
+            className="space-y-3 px-3 py-4 sm:px-6 sm:py-5"
+          >
+            {messages.map((msg) => {
+              const mine = msg.role === "user";
+              return (
+                <motion.div
+                  key={msg.id}
+                  variants={item}
+                  className={`flex w-full ${mine ? "justify-start" : "justify-end"}`}
                 >
-                  {!mine ? (
-                    <p className="mb-1 text-[0.65rem] font-medium text-yellow-400">
-                      المساعد
-                    </p>
-                  ) : null}
-                  {msg.text}
-                </div>
-              </motion.div>
-            );
-          })}
-          {sending ? (
-            <p className="px-1 text-xs text-slate-500">المساعد بيكتب…</p>
-          ) : null}
-          <div ref={endRef} />
-        </motion.div>
+                  <div
+                    className={`max-w-[min(100%,36rem)] rounded-2xl px-4 py-3 text-start text-sm leading-relaxed ${
+                      mine
+                        ? "bg-yellow-400 text-[#050505] shadow-[0_0_24px_rgba(251,191,36,0.2)]"
+                        : "border border-white/10 bg-white/5 text-slate-200"
+                    }`}
+                  >
+                    {!mine ? (
+                      <p className="mb-1 text-[0.65rem] font-medium text-yellow-400">
+                        المساعد
+                      </p>
+                    ) : null}
+                    {msg.text}
+                  </div>
+                </motion.div>
+              );
+            })}
+            {sending ? (
+              <p className="px-1 text-xs text-slate-500">المساعد بيكتب…</p>
+            ) : null}
+            <div ref={endRef} />
+          </motion.div>
+        )}
       </RtlScroll>
 
       <form
@@ -206,7 +330,7 @@ export function AiLearningChat({
             id="ai-learn-input"
             rows={2}
             value={draft}
-            disabled={sending}
+            disabled={sending || !historyReady}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -223,7 +347,7 @@ export function AiLearningChat({
             </p>
             <button
               type="submit"
-              disabled={!draft.trim() || sending}
+              disabled={!draft.trim() || sending || !historyReady}
               className="rounded-full bg-yellow-400 px-5 py-2 text-sm font-medium text-[#050505] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
             >
               {sending ? "…" : "إرسال"}

@@ -1,27 +1,51 @@
 /**
  * n8n Learning / Community Assistant client.
- * Webhook expects: { message, session_id, context?, course_id? }
- * Responds with: { message, session_id }
+ *
+ * Strict workflow mapping (by exact n8n workflow name):
+ * - community → "chat bot انسان بعين مصور"  → /webhook/afp-community-chatbot
+ * - learning  → "assisted chatbot بداية"   → /webhook/afp-learning-chatbot
+ *
+ * Payload: { message, session_id, context, course_id?, workflow_name }
+ * Response: { message, session_id }
  */
-
-const DEFAULT_WEBHOOK =
-  "https://n8n.srv1960854.hstgr.cloud/webhook/smart-ops-chat";
 
 export type AssistantContext = "learning" | "community";
 
-export type AssistantReply = {
-  ok: true;
-  message: string;
-  sessionId: string;
-} | {
-  ok: false;
-  message: string;
-  sessionId: string | null;
+export type AssistantReply =
+  | {
+      ok: true;
+      message: string;
+      sessionId: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      sessionId: string | null;
+    };
+
+/** Exact n8n workflow names required by product. */
+export const N8N_WORKFLOW_NAMES = {
+  community: "chat bot انسان بعين مصور",
+  learning: "assisted chatbot بداية",
+} as const;
+
+const N8N_BASE = "https://n8n.srv1960854.hstgr.cloud/webhook";
+
+const DEFAULT_WEBHOOKS: Record<AssistantContext, string> = {
+  community: `${N8N_BASE}/afp-community-chatbot`,
+  learning: `${N8N_BASE}/afp-learning-chatbot`,
 };
 
-function webhookUrl(): string {
+function webhookUrl(scope: AssistantContext): string {
+  if (scope === "community") {
+    return (
+      process.env.NEXT_PUBLIC_N8N_COMMUNITY_WEBHOOK?.trim() ||
+      DEFAULT_WEBHOOKS.community
+    );
+  }
   return (
-    process.env.NEXT_PUBLIC_N8N_ASSISTANT_WEBHOOK?.trim() || DEFAULT_WEBHOOK
+    process.env.NEXT_PUBLIC_N8N_LEARNING_WEBHOOK?.trim() ||
+    DEFAULT_WEBHOOKS.learning
   );
 }
 
@@ -71,7 +95,7 @@ export function persistAssistantSessionId(input: {
 }
 
 /**
- * Send a chat turn to n8n and store the returned Session ID for memory.
+ * Send a chat turn to the scope-specific n8n workflow and store Session ID.
  */
 export async function sendAssistantMessage(input: {
   message: string;
@@ -94,35 +118,36 @@ export async function sendAssistantMessage(input: {
       courseId: input.courseId,
     });
 
-  // Scope-prefix keeps Community vs Learning memory separate in n8n Simple Memory
-  const scopedSessionId = sessionId.includes(":")
-    ? sessionId
-    : `${input.scope}:${sessionId}`;
+  const workflowName = N8N_WORKFLOW_NAMES[input.scope];
 
   const body: Record<string, string> = {
     message: text,
-    session_id: scopedSessionId,
+    session_id: sessionId,
     context: input.scope,
+    workflow_name: workflowName,
   };
   if (input.courseId) body.course_id = input.courseId;
   if (input.imageDataUrl) body.image = input.imageDataUrl;
 
   try {
-    const res = await fetch(webhookUrl(), {
+    const res = await fetch(webhookUrl(input.scope), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
-    const raw = (await res.json().catch(() => null)) as
-      | { message?: string; session_id?: string; output?: string; error?: string }
-      | null;
+    const raw = (await res.json().catch(() => null)) as {
+      message?: string;
+      session_id?: string;
+      output?: string;
+      error?: string;
+    } | null;
 
     if (!res.ok) {
       return {
         ok: false,
         message: "المساعد مش متاح دلوقتي. حاول تاني بعد شوية.",
-        sessionId: scopedSessionId,
+        sessionId,
       };
     }
 
@@ -131,7 +156,7 @@ export async function sendAssistantMessage(input: {
       raw?.output?.trim() ||
       "تعذر توليد الرد حالياً. حاول مرة أخرى.";
 
-    const returnedSid = raw?.session_id?.trim() || scopedSessionId;
+    const returnedSid = raw?.session_id?.trim() || sessionId;
     sessionId = returnedSid;
     persistAssistantSessionId({
       scope: input.scope,
@@ -146,7 +171,7 @@ export async function sendAssistantMessage(input: {
     return {
       ok: false,
       message: "مقدرناش نوصل للمساعد. تأكد من الاتصال وحاول تاني.",
-      sessionId: scopedSessionId,
+      sessionId,
     };
   }
 }
