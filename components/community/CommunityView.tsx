@@ -13,7 +13,7 @@ import {
 import { MemberActionMenu } from "@/components/community/MemberActionMenu";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
-import { RtlScroll } from "@/components/ui/RtlScroll";
+import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 import {
   QUICK_REACTIONS,
   channels,
@@ -111,12 +111,19 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const pickerRef = useRef<HTMLDivElement>(null);
   const reactPickerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<RtlScrollHandle>(null);
   const activeChatUserRef = useRef(activeChatUser);
   activeChatUserRef.current = activeChatUser;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // Always land on the newest message (bottom) — scroll the chat scroller, not the window
+    const id = window.setTimeout(() => {
+      chatScrollRef.current?.scrollToBottom(
+        messages.length <= 1 ? "auto" : "smooth",
+      );
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [messages, tab]);
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
@@ -521,7 +528,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
               </div>
             </header>
 
-            <RtlScroll className="min-h-0 flex-1">
+            <RtlScroll ref={chatScrollRef} className="min-h-0 flex-1">
               {loading ? (
                 <p className="px-5 py-8 text-right text-sm text-slate-500">
                   بنحمّل الرسائل…
@@ -607,6 +614,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                               <MemberActionMenu
                                 open={menuOpen}
                                 onClose={() => setMenuFor(null)}
+                                memberName={label}
                                 onMessage={openPeerDmFromMessage}
                                 canBlock={canModerate}
                                 onBlock={() =>
@@ -759,12 +767,14 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                                   +
                                 </button>
                                 {reactPickerFor === message.id ? (
-                                  <div className="absolute bottom-full end-0 z-20 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+                                  <div className="emoji-picker-shell absolute bottom-full end-0 z-20 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
                                     <EmojiPicker
                                       theme={Theme.DARK}
                                       height={320}
                                       width={300}
                                       searchPlaceHolder="بحث…"
+                                      previewConfig={{ showPreview: false }}
+                                      skinTonesDisabled
                                       onEmojiClick={(data) =>
                                         void onReact(message.id, data.emoji)
                                       }
@@ -892,12 +902,14 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                         😊
                       </button>
                       {pickerOpen && !chatMuted ? (
-                        <div className="absolute bottom-full start-0 z-30 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+                        <div className="emoji-picker-shell absolute bottom-full start-0 z-30 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
                           <EmojiPicker
                             theme={Theme.DARK}
                             height={360}
                             width={320}
                             searchPlaceHolder="بحث…"
+                            previewConfig={{ showPreview: false }}
+                            skinTonesDisabled
                             onEmojiClick={onEmojiPick}
                           />
                         </div>

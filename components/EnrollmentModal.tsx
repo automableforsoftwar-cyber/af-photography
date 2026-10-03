@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { site } from "@/lib/content";
 import { signInWithEmail, signUpWithEmail } from "@/lib/enroll";
+import { EGYPT_GOVERNORATES } from "@/lib/governorates";
 import { useAuthStore } from "@/lib/auth-store";
 import { getPostAuthPath } from "@/lib/routing";
 import { supabase } from "@/lib/supabase";
@@ -36,6 +37,7 @@ export function EnrollmentModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [governorate, setGovernorate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -67,6 +69,7 @@ export function EnrollmentModal({
       setFullName("");
       setEmail("");
       setPassword("");
+      setGovernorate("");
       setError(null);
       setLoading(false);
     }
@@ -75,7 +78,7 @@ export function EnrollmentModal({
   const canSubmit = Boolean(
     email.trim() &&
       password.length >= 6 &&
-      (tab === "login" || fullName.trim()),
+      (tab === "login" || (fullName.trim() && governorate)),
   );
 
   const onSubmit = async (event: FormEvent) => {
@@ -87,7 +90,7 @@ export function EnrollmentModal({
 
     const result =
       tab === "signup"
-        ? await signUpWithEmail({ email, password, fullName })
+        ? await signUpWithEmail({ email, password, fullName, governorate })
         : await signInWithEmail({ email, password });
 
     if (!result.ok) {
@@ -200,24 +203,50 @@ export function EnrollmentModal({
 
               <form onSubmit={onSubmit} className="mt-6 space-y-4">
                 {tab === "signup" ? (
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium text-slate-500">
-                      الاسم بالكامل
-                    </span>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => {
-                        setFullName(e.target.value);
-                        setError(null);
-                      }}
-                      required
-                      disabled={loading}
-                      autoComplete="name"
-                      className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
-                      placeholder="مثال: أحمد خالد"
-                    />
-                  </label>
+                  <>
+                    <label className="block space-y-1.5">
+                      <span className="text-xs font-medium text-slate-500">
+                        الاسم بالكامل
+                      </span>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => {
+                          setFullName(e.target.value);
+                          setError(null);
+                        }}
+                        required
+                        disabled={loading}
+                        autoComplete="name"
+                        className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
+                        placeholder="مثال: أحمد خالد"
+                      />
+                    </label>
+                    <label className="block space-y-1.5">
+                      <span className="text-xs font-medium text-slate-500">
+                        المحافظة
+                      </span>
+                      <select
+                        value={governorate}
+                        onChange={(e) => {
+                          setGovernorate(e.target.value);
+                          setError(null);
+                        }}
+                        required
+                        disabled={loading}
+                        className="w-full appearance-none rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-yellow-400/50 disabled:opacity-50"
+                      >
+                        <option value="" disabled className="bg-[#0a0a0a]">
+                          اختار المحافظة
+                        </option>
+                        {EGYPT_GOVERNORATES.map((g) => (
+                          <option key={g} value={g} className="bg-[#0a0a0a]">
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
                 ) : null}
 
                 <label className="block space-y-1.5">

@@ -14,7 +14,7 @@ import {
 import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
-import { RtlScroll } from "@/components/ui/RtlScroll";
+import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 import { RoleBadge } from "@/components/community/RoleBadge";
 
 export type ActiveChatUser = {
@@ -57,6 +57,7 @@ export function DirectMessageDrawer({
   const [mounted, setMounted] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<RtlScrollHandle>(null);
   const lastIncomingId = useRef<string | null>(null);
   const loadedPeerRef = useRef<string | null>(null);
   const onOpenedPeerRef = useRef(onOpenedPeer);
@@ -135,7 +136,12 @@ export function DirectMessageDrawer({
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const id = window.setTimeout(() => {
+      chatScrollRef.current?.scrollToBottom(
+        messages.length <= 1 ? "auto" : "smooth",
+      );
+    }, 40);
+    return () => window.clearTimeout(id);
   }, [messages]);
 
   // Realtime append only
@@ -223,7 +229,7 @@ export function DirectMessageDrawer({
       <button
         type="button"
         aria-label="قفل المحادثة"
-        className="fixed inset-0 z-[9998] bg-black/55 backdrop-blur-sm"
+        className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-md"
         onClick={() => onCloseRef.current()}
       />
 
@@ -232,7 +238,7 @@ export function DirectMessageDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`محادثة مع ${peerName}`}
-        className="fixed inset-y-0 right-0 z-[9999] flex w-96 max-w-[100vw] flex-col border-l border-gray-800 bg-[#0a0a0a] text-right shadow-2xl"
+        className="fixed inset-y-0 right-0 z-[9999] flex w-full max-w-[100vw] flex-col border-l border-yellow-400/15 bg-[#080808] text-right shadow-[-24px_0_80px_rgba(0,0,0,0.55)] sm:w-[26rem] lg:w-[28rem]"
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -276,7 +282,7 @@ export function DirectMessageDrawer({
           </div>
         ) : (
           <>
-            <RtlScroll className="min-h-0 flex-1 px-4 py-4">
+            <RtlScroll ref={chatScrollRef} className="min-h-0 flex-1 px-4 py-4">
               {loading && messages.length === 0 ? (
                 <p className="text-right text-sm text-slate-500">
                   بنحمّل المحادثة…

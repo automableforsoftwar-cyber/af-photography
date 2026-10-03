@@ -70,41 +70,35 @@ export async function fetchMyAmgadMessages(
 export async function fetchStaffAmgadInbox(
   _courseId?: string,
 ): Promise<AmgadInboxThread[]> {
-  const flags = await fetchMyProfileFlags();
-  // Soft gate — RLS is the real auth; still try fetch if flags look staff
-  const looksStaff = isStaffRole(flags.role);
-
   const since = daysAgoIso(RETENTION_DAYS);
-  let query = supabase
+
+  // Do not client-gate on role — RLS enforces staff access for instructor + organizer
+  const primary = await supabase
     .from("amgad_messages")
     .select(AMGAD_SELECT)
-    .eq("is_from_staff", false)
+    .or("is_from_staff.eq.false,is_from_staff.is.null")
     .gte("created_at", since)
     .order("created_at", { ascending: false });
 
-  // Prefer course filter when provided, but never hide cross-course inbox
-  // by requiring it — staff inbox is global within retention.
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("staff amgad inbox:", error);
-    // Retry without is_from_staff filter (column may be missing on older caches)
-    const retry = await supabase
-      .from("amgad_messages")
-      .select(
-        "id, course_id, sender_id, sender_name, body, image_url, created_at",
-      )
-      .gte("created_at", since)
-      .order("created_at", { ascending: false });
-    if (retry.error) {
-      console.error("staff amgad inbox retry:", retry.error);
-      if (!looksStaff) return [];
-      return [];
-    }
-    return groupInboxThreads((retry.data ?? []) as AmgadMessage[]);
+  if (!primary.error && primary.data) {
+    return groupInboxThreads(primary.data as AmgadMessage[]);
   }
 
-  return groupInboxThreads((data ?? []) as AmgadMessage[]);
+  console.error("staff amgad inbox:", primary.error);
+
+  const retry = await supabase
+    .from("amgad_messages")
+    .select(
+      "id, course_id, sender_id, sender_name, body, image_url, created_at",
+    )
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
+
+  if (retry.error) {
+    console.error("staff amgad inbox retry:", retry.error);
+    return [];
+  }
+  return groupInboxThreads((retry.data ?? []) as AmgadMessage[]);
 }
 
 function groupInboxThreads(rows: AmgadMessage[]): AmgadInboxThread[] {

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CourseModule } from "@/lib/content";
-import { RtlScroll } from "@/components/ui/RtlScroll";
+import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -61,9 +61,15 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
   ]);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<RtlScrollHandle>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const id = window.setTimeout(() => {
+      scrollRef.current?.scrollToBottom(
+        messages.length <= 2 ? "auto" : "smooth",
+      );
+    }, 40);
+    return () => window.clearTimeout(id);
   }, [messages.length]);
 
   const send = () => {
@@ -84,7 +90,7 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
       <header className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6">
         <p className="text-xs font-medium tracking-wide text-yellow-400">
           مساعد التعلم
@@ -97,7 +103,7 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
         </p>
       </header>
 
-      <RtlScroll className="min-h-0 flex-1">
+      <RtlScroll ref={scrollRef} className="min-h-0 flex-1">
         <motion.div
           variants={list}
           initial="hidden"

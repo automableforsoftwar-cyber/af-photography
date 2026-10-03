@@ -48,13 +48,19 @@ export async function signUpWithEmail(input: {
   email: string;
   password: string;
   fullName: string;
+  governorate: string;
 }): Promise<AuthResult> {
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   const fullName = input.fullName.trim();
+  const governorate = input.governorate.trim();
 
   if (!fullName) {
     return { ok: false, message: "اكتب الاسم بالكامل." };
+  }
+
+  if (!governorate) {
+    return { ok: false, message: "اختار المحافظة." };
   }
 
   if (!email || password.length < 6) {
@@ -70,7 +76,7 @@ export async function signUpWithEmail(input: {
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, email } },
+    options: { data: { full_name: fullName, email, governorate } },
   });
 
   if (signUpError) {
@@ -111,6 +117,7 @@ export async function signUpWithEmail(input: {
       id: userId,
       email,
       full_name: fullName,
+      governorate,
       phone_number: null,
       used_code: null,
     },
