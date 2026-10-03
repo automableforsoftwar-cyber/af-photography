@@ -16,6 +16,8 @@ import {
   sendAssistantMessage,
   type AssistantContext,
   N8N_WORKFLOW_NAMES,
+  SMART_START_COURSE,
+  isSmartStartCourse,
 } from "@/lib/n8n-assistant";
 import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 
@@ -199,6 +201,7 @@ export function AiLearningChat({
       scope,
       userId: userId || "anon",
       courseId: course.id,
+      courseName: course.title,
       sessionId,
     });
 
@@ -241,7 +244,18 @@ export function AiLearningChat({
     setSending(false);
   };
 
-  const workflowLabel = N8N_WORKFLOW_NAMES[scope];
+  const isSmartStart = isSmartStartCourse({
+    courseId: course.id,
+    courseName: course.title,
+  });
+  const workflowLabel =
+    scope === "community"
+      ? N8N_WORKFLOW_NAMES.community
+      : N8N_WORKFLOW_NAMES.learningSmartStart;
+  const courseLabel =
+    scope === "learning" && isSmartStart
+      ? SMART_START_COURSE.name
+      : course.title;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
@@ -255,7 +269,7 @@ export function AiLearningChat({
               {course.title}
             </h1>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              محادثة محفوظة · {workflowLabel}
+              محادثة محفوظة · {courseLabel} · {workflowLabel}
             </p>
           </div>
           {onBackToCommunity ? (
