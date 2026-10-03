@@ -2,6 +2,7 @@ import { RETENTION_DAYS, daysAgoIso, pickDisplayName } from "@/lib/display-name"
 import { fetchMyProfileFlags } from "@/lib/moderation";
 import { toCommunityImagePublicUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /** emoji → list of user ids who reacted */
 export type MessageReactions = Record<string, string[]>;
@@ -333,4 +334,89 @@ export function formatMessageTime(iso: string): string {
   } catch {
     return "";
   }
+}
+
+function mapRawCourseMessage(row: Record<string, unknown>): CourseChatMessage {
+  const reactions = normalizeReactions(row.reactions);
+  const imageRaw = (row.image_url as string | null) ?? null;
+  return {
+    id: String(row.id),
+    course_id: String(row.course_id),
+    channel_id: String(row.channel_id),
+    user_id: String(row.user_id),
+    author_label: (row.author_label as string | null) ?? null,
+    body: String(row.body ?? ""),
+    image_url: imageRaw ? toCommunityImagePublicUrl(imageRaw) : null,
+    created_at: String(row.created_at),
+    reply_to_id: (row.reply_to_id as string | null) ?? null,
+    reactions,
+    author_title: null,
+    author_role: null,
+    reply_to: null,
+  };
+}
+
+/**
+ * Live INSERT/UPDATE/DELETE for a course channel.
+ * Returns unsubscribe.
+ */
+export function subscribeCourseMessages(input: {
+  courseId: string;
+  channelId: string;
+  onInsert: (message: CourseChatMessage) => void;
+  onUpdate?: (message: CourseChatMessage) => void;
+  onDelete?: (messageId: string) => void;
+}): () => void {
+  const channelName = `course-chat:${input.courseId}:${input.channelId}:${Date.now()}`;
+  const channel: RealtimeChannel = supabase
+    .channel(channelName)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "course_messages",
+        filter: `course_id=eq.${input.courseId}`,
+      },
+      (payload) => {
+        const row = payload.new as Record<string, unknown>;
+        if (!row?.id) return;
+        if (String(row.channel_id) !== input.channelId) return;
+        input.onInsert(mapRawCourseMessage(row));
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "course_messages",
+        filter: `course_id=eq.${input.courseId}`,
+      },
+      (payload) => {
+        const row = payload.new as Record<string, unknown>;
+        if (!row?.id || !input.onUpdate) return;
+        if (String(row.channel_id) !== input.channelId) return;
+        input.onUpdate(mapRawCourseMessage(row));
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "DELETE",
+        schema: "public",
+        table: "course_messages",
+        filter: `course_id=eq.${input.courseId}`,
+      },
+      (payload) => {
+        const row = payload.old as Record<string, unknown>;
+        if (!row?.id || !input.onDelete) return;
+        input.onDelete(String(row.id));
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }

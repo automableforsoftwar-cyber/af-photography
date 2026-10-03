@@ -255,15 +255,23 @@ export async function sendPeerMessage(input: {
 }
 
 /**
- * Live INSERT subscription for messages where current user is the receiver.
- * Returns an unsubscribe function.
+ * Live INSERT subscription for peer DMs involving the current user
+ * (as sender OR receiver) — keeps open threads live for both sides.
  */
 export function subscribeIncomingPeerMessages(input: {
   userId: string;
   onInsert: (message: PeerDirectMessage) => void;
 }): () => void {
+  const mapRow = (row: PeerDirectMessage): PeerDirectMessage => ({
+    ...row,
+    image_url: row.image_url
+      ? toCommunityImagePublicUrl(row.image_url)
+      : null,
+    is_read: Boolean(row.is_read),
+  });
+
   const channel: RealtimeChannel = supabase
-    .channel(`peer-dm-inbox:${input.userId}`)
+    .channel(`peer-dm-inbox:${input.userId}:${Date.now()}`)
     .on(
       "postgres_changes",
       {
@@ -275,13 +283,22 @@ export function subscribeIncomingPeerMessages(input: {
       (payload) => {
         const row = payload.new as PeerDirectMessage;
         if (!row?.id) return;
-        input.onInsert({
-          ...row,
-          image_url: row.image_url
-            ? toCommunityImagePublicUrl(row.image_url)
-            : null,
-          is_read: Boolean(row.is_read),
-        });
+        input.onInsert(mapRow(row));
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "direct_messages",
+        filter: `sender_id=eq.${input.userId}`,
+      },
+      (payload) => {
+        const row = payload.new as PeerDirectMessage;
+        if (!row?.id) return;
+        // Echo of own send — still useful if another tab/device sent it
+        input.onInsert(mapRow(row));
       },
     )
     .subscribe();
@@ -289,4 +306,24 @@ export function subscribeIncomingPeerMessages(input: {
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+/** Live peer thread (both directions) for an open DM drawer. */
+export function subscribePeerThread(input: {
+  userId: string;
+  peerUserId: string;
+  onInsert: (message: PeerDirectMessage) => void;
+}): () => void {
+  return subscribeIncomingPeerMessages({
+    userId: input.userId,
+    onInsert: (message) => {
+      const involvesPeer =
+        (message.sender_id === input.peerUserId &&
+          message.receiver_id === input.userId) ||
+        (message.sender_id === input.userId &&
+          message.receiver_id === input.peerUserId);
+      if (!involvesPeer) return;
+      input.onInsert(message);
+    },
+  });
 }

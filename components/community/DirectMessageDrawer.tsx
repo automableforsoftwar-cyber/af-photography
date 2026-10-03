@@ -9,6 +9,7 @@ import {
   fetchPeerThread,
   markPeerThreadRead,
   sendPeerMessage,
+  subscribePeerThread,
   type PeerDirectMessage,
 } from "@/lib/direct-messages";
 import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
@@ -148,7 +149,12 @@ export function DirectMessageDrawer({
   useEffect(() => {
     if (!incomingMessage) return;
     if (incomingMessage.id === lastIncomingId.current) return;
-    if (incomingMessage.sender_id !== peerUserId) return;
+    if (
+      incomingMessage.sender_id !== peerUserId &&
+      incomingMessage.receiver_id !== peerUserId
+    ) {
+      return;
+    }
     lastIncomingId.current = incomingMessage.id;
     setMessages((prev) => {
       if (prev.some((m) => m.id === incomingMessage.id)) return prev;
@@ -161,10 +167,34 @@ export function DirectMessageDrawer({
         },
       ];
     });
-    void markPeerThreadRead(peerUserId).then(() => {
-      onOpenedPeerRef.current?.(peerUserId);
-    });
+    if (incomingMessage.sender_id === peerUserId) {
+      void markPeerThreadRead(peerUserId).then(() => {
+        onOpenedPeerRef.current?.(peerUserId);
+      });
+    }
   }, [incomingMessage, peerUserId]);
+
+  // Direct realtime for this peer thread (works even if parent doesn't forward)
+  useEffect(() => {
+    if (!myId || !peerUserId || isSelf) return;
+    return subscribePeerThread({
+      userId: myId,
+      peerUserId,
+      onInsert: (message) => {
+        if (message.id === lastIncomingId.current) return;
+        lastIncomingId.current = message.id;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        if (message.sender_id === peerUserId) {
+          void markPeerThreadRead(peerUserId).then(() => {
+            onOpenedPeerRef.current?.(peerUserId);
+          });
+        }
+      },
+    });
+  }, [myId, peerUserId, isSelf]);
 
   const send = async () => {
     if (!peerUserId || sending || isSelf) return;

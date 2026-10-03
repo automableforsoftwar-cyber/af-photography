@@ -20,6 +20,7 @@ import {
   fetchCourseMessages,
   formatMessageTime,
   sendCourseMessage,
+  subscribeCourseMessages,
   toggleMessageReaction,
   type CourseChatMessage,
 } from "@/lib/course-community";
@@ -218,6 +219,50 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Realtime community channel messages (no refresh needed)
+  useEffect(() => {
+    if (!courseId || tab === "inbox") return;
+    return subscribeCourseMessages({
+      courseId,
+      channelId,
+      onInsert: (message) => {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        void fetchProfilesByIds([message.user_id]).then((meta) => {
+          const profile = meta.get(message.user_id);
+          if (!profile) return;
+          setAuthorMeta((prev) => ({
+            ...prev,
+            [message.user_id]: {
+              title: profile.title,
+              is_blocked: profile.is_blocked,
+            },
+          }));
+        });
+      },
+      onUpdate: (message) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.id
+              ? {
+                  ...m,
+                  ...message,
+                  reply_to: m.reply_to,
+                  author_title: m.author_title ?? message.author_title,
+                  author_role: m.author_role ?? message.author_role,
+                }
+              : m,
+          ),
+        );
+      },
+      onDelete: (messageId) => {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      },
+    });
+  }, [courseId, channelId, tab]);
 
   useEffect(() => {
     void refreshConversations();
