@@ -188,9 +188,13 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             activeCourseId || isStaff ? (
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <CommunityView
+                  key={
+                    activeCourseId ?? modules[0]?.id ?? "photographer-eye"
+                  }
                   courseId={
                     activeCourseId ?? modules[0]?.id ?? "photographer-eye"
                   }
+                  initialTab="general"
                 />
               </div>
             ) : (

@@ -12,8 +12,10 @@ import {
 } from "@/components/community/DirectMessageDrawer";
 import { MemberActionMenu } from "@/components/community/MemberActionMenu";
 import { RoleBadge } from "@/components/community/RoleBadge";
+import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
+import { getModuleById } from "@/lib/content";
 import {
   QUICK_REACTIONS,
   channels,
@@ -74,9 +76,14 @@ type TabId = "general" | "photos" | "announcements" | "inbox";
 
 type CommunityViewProps = {
   courseId: string;
+  /** Force opening on a specific channel (staff from Admin → #عام). */
+  initialTab?: TabId;
 };
 
-export function CommunityView({ courseId }: CommunityViewProps) {
+export function CommunityView({
+  courseId,
+  initialTab = "general",
+}: CommunityViewProps) {
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
@@ -86,7 +93,8 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   const role = liveRole;
   const isBlocked = isBlockedStore;
   const chatMuted = isBlocked || isChatBlocked;
-  const [tab, setTab] = useState<TabId>("general");
+  const [tab, setTab] = useState<TabId>(initialTab);
+  const [showAssistant, setShowAssistant] = useState(false);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [messages, setMessages] = useState<CourseChatMessage[]>([]);
@@ -117,14 +125,22 @@ export function CommunityView({ courseId }: CommunityViewProps) {
   activeChatUserRef.current = activeChatUser;
 
   useEffect(() => {
-    // Always land on the newest message (bottom) — scroll the chat scroller, not the window
+    // Always land on the newest message (bottom) after load / tab change
+    if (loading || tab === "inbox" || showAssistant) return;
     const id = window.setTimeout(() => {
-      chatScrollRef.current?.scrollToBottom(
-        messages.length <= 1 ? "auto" : "smooth",
-      );
-    }, 50);
+      chatScrollRef.current?.scrollToBottom("auto");
+      // Second pass after images/layout settle (esp. mobile)
+      window.setTimeout(() => {
+        chatScrollRef.current?.scrollToBottom("auto");
+      }, 120);
+    }, 30);
     return () => window.clearTimeout(id);
-  }, [messages, tab]);
+  }, [messages, tab, loading, showAssistant]);
+
+  useEffect(() => {
+    setTab(initialTab);
+    setShowAssistant(false);
+  }, [courseId, initialTab]);
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
@@ -457,40 +473,56 @@ export function CommunityView({ courseId }: CommunityViewProps) {
     },
   ];
 
+  const courseModule = getModuleById(courseId);
+
+  if (showAssistant && courseModule) {
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <AiLearningChat
+          course={courseModule}
+          scope="community"
+          onBackToCommunity={() => setShowAssistant(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       dir="rtl"
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 text-right shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex-row"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 text-right shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex-row"
     >
-      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-60 lg:border-b-0 lg:border-s lg:overflow-y-auto">
-        <div className="border-b border-white/10 px-4 py-4 text-right">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-white">المجتمع</p>
-            <span
-              className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
-              title="الرسائل الخاصة"
-              aria-label={
-                hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
-              }
-            >
-              ✉
-              {hasAnyUnread ? (
-                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
-              ) : null}
-            </span>
-          </div>
+      {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
+      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-3 sm:px-4 sm:py-4">
+          <p className="text-sm font-medium text-white">المجتمع</p>
+          <span
+            className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
+            title="الرسائل الخاصة"
+            aria-label={
+              hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
+            }
+          >
+            ✉
+            {hasAnyUnread ? (
+              <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+            ) : null}
+          </span>
         </div>
-        <ul className="space-y-1 p-3">
+        <ul className="flex gap-1 overflow-x-auto p-2 premium-scroll lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
           {tabs.map((t) => {
             const active = t.id === tab;
             const isLockedChannel =
               t.id === "announcements" && !canBroadcastAnnouncements;
             return (
-              <li key={t.id}>
+              <li key={t.id} className="shrink-0 lg:w-full">
                 <button
                   type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
+                  onClick={() => {
+                    setShowAssistant(false);
+                    setTab(t.id);
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-right text-sm whitespace-nowrap transition-colors sm:py-2.5 ${
                     active
                       ? "bg-yellow-400/15 font-medium text-yellow-400"
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
@@ -498,7 +530,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
                 >
                   <span>{t.label}</span>
                   {isLockedChannel ? (
-                    <span className="shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.6rem] text-slate-500">
+                    <span className="hidden shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.6rem] text-slate-500 lg:inline">
                       قراءة فقط
                     </span>
                   ) : null}
@@ -508,7 +540,7 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           })}
         </ul>
 
-        <div className="mt-auto border-t border-white/10 p-3">
+        <div className="mt-auto hidden border-t border-white/10 p-3 lg:block">
           <p className="mb-2 px-1 text-[0.7rem] font-medium tracking-wide text-slate-500">
             الرسائل الخاصة
           </p>
@@ -553,23 +585,35 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
-            <header className="shrink-0 border-b border-white/10 px-5 py-4 text-right">
+            <header className="shrink-0 border-b border-white/10 px-3 py-3 text-right sm:px-5 sm:py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h1 className="font-display text-base font-bold text-white">
+                <div className="min-w-0">
+                  <h1 className="font-display text-sm font-bold text-white sm:text-base">
                     {channelLabel(activeChannel?.name ?? "")}
                   </h1>
-                  <p className="mt-0.5 text-xs text-slate-400">
+                  <p className="mt-0.5 text-[0.7rem] text-slate-400 sm:text-xs">
                     {activeChannel?.topic}
                   </p>
                 </div>
-                {isAnnouncements ? (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] text-slate-400">
-                    {announcementsReadOnly
-                      ? "قراءة فقط · للإدارة"
-                      : "إدارة · نشر للجميع"}
-                  </span>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAnnouncements ? (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] text-slate-400">
+                      {announcementsReadOnly
+                        ? "قراءة فقط · للإدارة"
+                        : "إدارة · نشر للجميع"}
+                    </span>
+                  ) : null}
+                  {/* Mobile: Assistant entry opposite the channels strip */}
+                  {courseModule ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAssistant(true)}
+                      className="rounded-full border border-yellow-400/35 bg-yellow-400/10 px-3 py-1.5 text-[0.7rem] font-medium text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] lg:hidden"
+                    >
+                      مساعد التعلم
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </header>
 
@@ -986,6 +1030,29 @@ export function CommunityView({ courseId }: CommunityViewProps) {
           </>
         )}
       </section>
+
+      {/* Desktop: Learning Assistant on the opposite side of the channel list */}
+      {courseModule ? (
+        <aside className="hidden w-14 shrink-0 flex-col items-center border-e border-white/10 bg-black/20 py-4 lg:flex">
+          <button
+            type="button"
+            onClick={() => setShowAssistant(true)}
+            title="مساعد التعلم"
+            aria-label="فتح مساعد التعلم"
+            className="flex flex-col items-center gap-2 rounded-xl border border-yellow-400/30 bg-yellow-400/10 px-2 py-3 text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505]"
+          >
+            <span className="text-base leading-none" aria-hidden>
+              ✦
+            </span>
+            <span
+              className="text-[0.65rem] font-medium tracking-wide"
+              style={{ writingMode: "vertical-rl" }}
+            >
+              مساعد التعلم
+            </span>
+          </button>
+        </aside>
+      ) : null}
 
       <ImageLightbox
         src={lightboxSrc}

@@ -112,7 +112,7 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <AiLearningChat course={course} />
+        <AiLearningChat course={course} scope="learning" />
       </div>
     </div>
   );

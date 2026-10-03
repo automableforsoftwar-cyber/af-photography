@@ -48,7 +48,7 @@ export function LearningHub({
         >
           {panel === "learn" ? (
             hasActiveCourse && course ? (
-              <AiLearningChat course={course} />
+              <AiLearningChat course={course} scope="learning" />
             ) : (
               <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8 text-center">
                 <p className="text-sm text-slate-400">
@@ -58,7 +58,7 @@ export function LearningHub({
             )
           ) : panel === "community" ? (
             course ? (
-              <CommunityView courseId={course.id} />
+              <CommunityView courseId={course.id} initialTab="general" />
             ) : (
               <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
                 افتح كورس مفعّل أولاً.

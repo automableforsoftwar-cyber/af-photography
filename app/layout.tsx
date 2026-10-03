@@ -1,8 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Alexandria, Kufam } from "next/font/google";
 import { StoreHydration } from "@/components/StoreHydration";
 import { site } from "@/lib/content";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#050505",
+};
 
 const alexandria = Alexandria({
   subsets: ["arabic", "latin"],

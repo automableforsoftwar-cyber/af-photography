@@ -40,12 +40,20 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
+  const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const { ready, isStaff, role, title: myTitle } = useLiveStaffRole();
   const isInstructor = role === "instructor";
-  const courseId =
-    activeCourseId ?? modules[0]?.id ?? "photographer-eye";
+  const defaultCourseId = modules[0]?.id ?? "photographer-eye";
+  const courseId = activeCourseId ?? defaultCourseId;
 
   const [tab, setTab] = useState<AdminTab>("members");
+
+  const openCommunity = useCallback(() => {
+    if (!activeCourseId) {
+      setActiveCourseId(defaultCourseId);
+    }
+    setTab("community");
+  }, [activeCourseId, defaultCourseId, setActiveCourseId]);
   const [users, setUsers] = useState<ProfileModeration[]>([]);
   const [organizers, setOrganizers] = useState<ProfileModeration[]>([]);
   const [leaderboard, setLeaderboard] = useState<CompetitionLeaderRow[]>([]);
@@ -263,7 +271,13 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                if (t.id === "community") {
+                  openCommunity();
+                  return;
+                }
+                setTab(t.id);
+              }}
               className={`shrink-0 rounded-xl px-3 py-2.5 text-right text-sm font-medium transition ${
                 active
                   ? "bg-yellow-400/15 text-yellow-400"
@@ -278,25 +292,53 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
     </aside>
   );
 
+  // Full-bleed community — isolates from Admin sidebar (no layout bleed)
+  if (tab === "community") {
+    const communityBody = (
+      <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-2.5 sm:px-4">
+          <button
+            type="button"
+            onClick={() => setTab("members")}
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
+          >
+            ← مركز القيادة
+          </button>
+          <p className="text-xs text-slate-500">
+            مجتمع المسار ·{" "}
+            <span className="text-yellow-400">#عام</span>
+          </p>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <CommunityView
+            key={`admin-community-${courseId}`}
+            courseId={courseId}
+            initialTab="general"
+          />
+        </div>
+      </div>
+    );
+    if (embedded) return communityBody;
+    return (
+      <AuthGate>
+        <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505] px-3 pb-4 pt-20 sm:px-6 lg:px-8">
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {communityBody}
+          </div>
+        </div>
+      </AuthGate>
+    );
+  }
+
   const panel = (
-    <div
-      className={`min-h-0 min-w-0 flex-1 text-right ${
-        tab === "community"
-          ? "flex flex-col overflow-hidden"
-          : "overflow-y-auto p-4 sm:p-6"
-      }`}
-    >
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 text-right sm:p-6">
       {notice ? (
         <p className="mb-4 shrink-0 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-2 text-sm text-yellow-300">
           {notice}
         </p>
       ) : null}
 
-      {tab === "community" ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <CommunityView courseId={courseId} />
-        </div>
-      ) : tab === "gallery" ? (
+      {tab === "gallery" ? (
         <div className="space-y-8">
           <DashboardGallery key={galleryKey} manageMode />
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">

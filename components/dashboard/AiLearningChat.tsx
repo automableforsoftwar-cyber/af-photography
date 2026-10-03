@@ -3,6 +3,12 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CourseModule } from "@/lib/content";
+import { useAuthStore } from "@/lib/auth-store";
+import {
+  getOrCreateAssistantSessionId,
+  sendAssistantMessage,
+  type AssistantContext,
+} from "@/lib/n8n-assistant";
 import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -30,38 +36,49 @@ const item = {
   },
 };
 
-function replyTo(text: string, courseTitle: string) {
-  const t = text.trim();
-  if (/ضوء|إضاءة|نور/.test(t)) {
-    return "شوف اتجاه الضوء قبل الزرار. قرّب من مصدر واضح (شباك أو لمبة هادية) وحرّك نفسك شوية — غالبًا ده بيفرّق أكتر من أي عدة.";
-  }
-  if (/تكوين|فريم|قص/.test(t)) {
-    return "حط المهم في مكان واضح، وسيب هوا حواليه. لو العين ضاعت في الزحمة — قرّب أو شيل عنصر من الإطار.";
-  }
-  if (/قرار|مشكلة|بدائل/.test(t)) {
-    return "اكتب المشكلة في جملة، حط بديلين، اختار معيار نجاح، وبعدين قرّر. التخمين السريع غالي على المدى الطويل.";
-  }
-  if (/قصة|حكاية|تأثير/.test(t)) {
-    return "اسأل نفسك: الصورة بتحكي إيه في جملة؟ لو مفيش جملة — ناقص سياق أو لحظة. خليك بسيط وواضح.";
-  }
-  return `سؤال كويس عن «${courseTitle}». ركّز على الفكرة مش الحفظ: افهم، طبّق على موقفك، وبعدين قِس النتيجة. لو حابب تفاصيل أكتر، اذكر الموضوع بالاسم (ضوء، تكوين، قرار…).`;
-}
-
 type AiLearningChatProps = {
   course: CourseModule;
+  /** community = assistant opened from Community; learning = Start Learning */
+  scope?: AssistantContext;
+  onBackToCommunity?: () => void;
 };
 
-export function AiLearningChat({ course }: AiLearningChatProps) {
+export function AiLearningChat({
+  course,
+  scope = "learning",
+  onBackToCommunity,
+}: AiLearningChatProps) {
+  const userId = useAuthStore((s) => s.userId) ?? "anon";
+  const [sessionId, setSessionId] = useState(() =>
+    getOrCreateAssistantSessionId({
+      scope,
+      userId,
+      courseId: course.id,
+    }),
+  );
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "welcome",
       role: "ai",
-      text: `أهلاً بيك في مسار «${course.title}». هنا بتتعلّم بالمحادثة — اسألني عن أي مفهوم، تمرين، أو فكرة، وهجاوبك باللهجة المصرية وبخطوات واضحة.`,
+      text:
+        scope === "community"
+          ? `أهلاً بيك في مساعد المجتمع لمسار «${course.title}». اسأل عن الدروس، التصوير، أو أي فكرة — وهرد عليك فوراً.`
+          : `أهلاً بيك في مسار «${course.title}». هنا بتتعلّم بالمحادثة — اسألني عن أي مفهوم، تمرين، أو فكرة، وهجاوبك باللهجة المصرية وبخطوات واضحة.`,
     },
   ]);
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<RtlScrollHandle>(null);
+
+  useEffect(() => {
+    const sid = getOrCreateAssistantSessionId({
+      scope,
+      userId,
+      courseId: course.id,
+    });
+    setSessionId(sid);
+  }, [scope, userId, course.id]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -70,37 +87,69 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
       );
     }, 40);
     return () => window.clearTimeout(id);
-  }, [messages.length]);
+  }, [messages.length, sending]);
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || sending) return;
+
     const userMsg: Msg = {
       id: `u-${Date.now()}`,
       role: "user",
       text,
     };
+    setMessages((prev) => [...prev, userMsg]);
+    setDraft("");
+    setSending(true);
+
+    const result = await sendAssistantMessage({
+      message: text,
+      scope,
+      userId,
+      courseId: course.id,
+      sessionId,
+    });
+
+    if (result.sessionId) {
+      setSessionId(result.sessionId);
+    }
+
     const aiMsg: Msg = {
       id: `a-${Date.now()}`,
       role: "ai",
-      text: replyTo(text, course.title),
+      text: result.ok
+        ? result.message
+        : result.message || "المساعد مش متاح دلوقتي.",
     };
-    setMessages((prev) => [...prev, userMsg, aiMsg]);
-    setDraft("");
+    setMessages((prev) => [...prev, aiMsg]);
+    setSending(false);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
-      <header className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6">
-        <p className="text-xs font-medium tracking-wide text-yellow-400">
-          مساعد التعلم
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold text-white sm:text-2xl">
-          {course.title}
-        </h1>
-        <p className="mt-1 text-sm text-slate-400">
-          اتعلّم بالمحادثة — مفيش فيديو ثابت، السؤال هو الدرس.
-        </p>
+      <header className="shrink-0 border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 text-right">
+            <p className="text-xs font-medium tracking-wide text-yellow-400">
+              مساعد التعلم
+            </p>
+            <h1 className="mt-1 font-display truncate text-lg font-bold text-white sm:text-xl">
+              {course.title}
+            </h1>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              محادثة ذكية مع ذاكرة جلسة محفوظة
+            </p>
+          </div>
+          {onBackToCommunity ? (
+            <button
+              type="button"
+              onClick={onBackToCommunity}
+              className="shrink-0 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1.5 text-xs font-medium text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:text-sm"
+            >
+              الرجوع للمجتمع
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <RtlScroll ref={scrollRef} className="min-h-0 flex-1">
@@ -108,7 +157,7 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
           variants={list}
           initial="hidden"
           animate="show"
-          className="space-y-3 px-4 py-5 sm:px-6"
+          className="space-y-3 px-3 py-4 sm:px-6 sm:py-5"
         >
           {messages.map((msg) => {
             const mine = msg.role === "user";
@@ -135,15 +184,18 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
               </motion.div>
             );
           })}
+          {sending ? (
+            <p className="px-1 text-xs text-slate-500">المساعد بيكتب…</p>
+          ) : null}
           <div ref={endRef} />
         </motion.div>
       </RtlScroll>
 
       <form
-        className="shrink-0 border-t border-white/10 p-4 sm:p-5"
+        className="shrink-0 border-t border-white/10 p-3 sm:p-5"
         onSubmit={(event) => {
           event.preventDefault();
-          send();
+          void send();
         }}
       >
         <div className="rounded-2xl border border-white/10 bg-black/40 p-3 backdrop-blur-md focus-within:border-yellow-400/40">
@@ -154,24 +206,27 @@ export function AiLearningChat({ course }: AiLearningChatProps) {
             id="ai-learn-input"
             rows={2}
             value={draft}
+            disabled={sending}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                send();
+                void send();
               }
             }}
             placeholder="اسأل عن درس، مفهوم، أو تمرين…"
-            className="w-full resize-none bg-transparent text-start text-sm leading-relaxed text-white outline-none placeholder:text-slate-500"
+            className="w-full resize-none bg-transparent text-start text-sm leading-relaxed text-white outline-none placeholder:text-slate-500 disabled:opacity-60"
           />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <p className="text-[0.7rem] text-slate-500">Enter للإرسال · Shift+Enter سطر جديد</p>
+            <p className="text-[0.65rem] text-slate-600 sm:text-[0.7rem]">
+              Enter للإرسال
+            </p>
             <button
               type="submit"
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || sending}
               className="rounded-full bg-yellow-400 px-5 py-2 text-sm font-medium text-[#050505] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              إرسال
+              {sending ? "…" : "إرسال"}
             </button>
           </div>
         </div>
