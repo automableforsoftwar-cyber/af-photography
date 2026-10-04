@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AuthButton } from "@/components/AuthButton";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { SocialIconLinks } from "@/components/SocialIconLinks";
@@ -15,9 +16,14 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const { isStaff } = useLiveStaffRole();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -35,13 +41,103 @@ export function Navbar() {
     };
   }, [open]);
 
+  const mobileMenu =
+    mounted && open
+      ? createPortal(
+          <div className="fixed inset-0 z-[10050] lg:hidden">
+            <button
+              type="button"
+              aria-label="إغلاق القائمة"
+              className="absolute inset-0 bg-black/80"
+              onClick={() => setOpen(false)}
+            />
+            <aside
+              id="mobile-menu"
+              className="fixed inset-y-0 left-0 z-[10051] flex h-[100dvh] w-[min(18rem,85vw)] flex-col shadow-2xl"
+              style={{ backgroundColor: "#0a0a0a" }}
+            >
+              <div
+                className="border-b border-white/10 px-5 py-5"
+                style={{ backgroundColor: "#0a0a0a" }}
+              >
+                <p className="font-display text-lg font-bold text-yellow-400">
+                  {site.name}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">{site.project}</p>
+              </div>
+              <ul
+                className="flex flex-1 flex-col gap-1 overflow-y-auto p-3"
+                style={{ backgroundColor: "#0a0a0a" }}
+              >
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      className="block rounded-xl px-3 py-3 text-sm font-medium text-white hover:bg-white/5 hover:text-yellow-400"
+                      onClick={() => setOpen(false)}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+                {isLoggedIn ? (
+                  <>
+                    {isStaff ? (
+                      <li>
+                        <Link
+                          href="/dashboard/admin"
+                          className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
+                          onClick={() => setOpen(false)}
+                        >
+                          الإدارة
+                        </Link>
+                      </li>
+                    ) : null}
+                    <li>
+                      <a
+                        href="#curriculum"
+                        className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
+                        onClick={() => setOpen(false)}
+                      >
+                        الكورسات
+                      </a>
+                    </li>
+                  </>
+                ) : (
+                  <li>
+                    <button
+                      type="button"
+                      className="block w-full rounded-xl px-3 py-3 text-right text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
+                      onClick={() => {
+                        setOpen(false);
+                        setAuthOpen(true);
+                      }}
+                    >
+                      تسجيل دخول / إنشاء حساب
+                    </button>
+                  </li>
+                )}
+              </ul>
+              <div
+                className="border-t border-white/10 p-4"
+                style={{ backgroundColor: "#0a0a0a" }}
+              >
+                <SocialIconLinks />
+              </div>
+            </aside>
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
+      className={`fixed inset-x-0 top-0 z-50 ${
         scrolled || open
-          ? "border-b border-white/10 bg-[#050505]/80 backdrop-blur-xl"
+          ? "border-b border-white/10 bg-[#0a0a0a]"
           : "border-b border-transparent bg-transparent"
       }`}
+      style={scrolled || open ? { backgroundColor: "#0a0a0a" } : undefined}
     >
       <nav
         className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10"
@@ -130,80 +226,7 @@ export function Navbar() {
         </div>
       </nav>
 
-      {open ? (
-        <div className="fixed inset-0 z-[70] lg:hidden">
-          <button
-            type="button"
-            aria-label="إغلاق القائمة"
-            className="absolute inset-0 bg-black/70"
-            onClick={() => setOpen(false)}
-          />
-          <aside
-            id="mobile-menu"
-            className="fixed inset-y-0 left-0 z-[80] flex w-64 flex-col bg-black shadow-2xl"
-          >
-            <div className="border-b border-white/10 bg-black px-5 py-5">
-              <p className="font-display text-lg font-bold text-yellow-400">
-                {site.name}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">{site.project}</p>
-            </div>
-            <ul className="flex flex-1 flex-col gap-1 overflow-y-auto bg-black p-3">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="block rounded-xl px-3 py-3 text-sm font-medium text-white hover:bg-white/5 hover:text-yellow-400"
-                    onClick={() => setOpen(false)}
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-              {isLoggedIn ? (
-                <>
-                  {isStaff ? (
-                    <li>
-                      <Link
-                        href="/dashboard/admin"
-                        className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
-                        onClick={() => setOpen(false)}
-                      >
-                        الإدارة
-                      </Link>
-                    </li>
-                  ) : null}
-                  <li>
-                    <a
-                      href="#curriculum"
-                      className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
-                      onClick={() => setOpen(false)}
-                    >
-                      الكورسات
-                    </a>
-                  </li>
-                </>
-              ) : (
-                <li>
-                  <button
-                    type="button"
-                    className="block w-full rounded-xl px-3 py-3 text-right text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
-                    onClick={() => {
-                      setOpen(false);
-                      setAuthOpen(true);
-                    }}
-                  >
-                    تسجيل دخول / إنشاء حساب
-                  </button>
-                </li>
-              )}
-            </ul>
-            <div className="border-t border-white/10 bg-black p-4">
-              <SocialIconLinks />
-            </div>
-          </aside>
-        </div>
-      ) : null}
+      {mobileMenu}
 
       <EnrollmentModal
         open={authOpen}

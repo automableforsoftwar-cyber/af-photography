@@ -1,13 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useState, type FormEvent } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { getModuleById, modules } from "@/lib/content";
 import { redeemCourseCode } from "@/lib/enroll";
 import { useAuthStore } from "@/lib/auth-store";
-
-const ease = [0.22, 1, 0.36, 1] as const;
 
 type RedeemCodePanelProps = {
   onUnlocked?: (courseId: string) => void;
@@ -66,11 +63,8 @@ export function RedeemCodePanel({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease }}
-      className={`rounded-2xl border border-white/10 bg-white/5 backdrop-blur-lg ${
+    <div
+      className={`rounded-2xl border border-white/10 bg-[#0a0a0a] ${
         compact ? "p-5" : "p-8"
       }`}
     >
@@ -135,6 +129,6 @@ export function RedeemCodePanel({
       {success ? (
         <p className="mt-3 text-sm text-yellow-400">{success}</p>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

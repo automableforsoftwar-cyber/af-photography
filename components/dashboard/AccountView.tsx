@@ -1,14 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { getModuleById, modules } from "@/lib/content";
 import { pickDisplayName } from "@/lib/display-name";
 import { useAuthStore } from "@/lib/auth-store";
-
-const ease = [0.22, 1, 0.36, 1] as const;
 
 export function AccountView() {
   const fullName = useAuthStore((s) => s.fullName);
@@ -29,12 +26,7 @@ export function AccountView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease }}
-        className="mx-auto mt-6 w-full max-w-2xl rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-lg"
-      >
+      <div className="mx-auto mt-6 w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0a0a0a] p-8">
         <p className="text-sm font-medium text-yellow-400">حسابك</p>
         <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
           {headline}
@@ -127,7 +119,7 @@ export function AccountView() {
           </p>
           <AuthButton appearance="plain" intent="logout" />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -441,7 +441,7 @@ export function CommunityView({
 
   if (showAssistant && courseModule) {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black">
         <AiLearningChat
           key={`assistant-${courseModule.id}`}
           course={courseModule}
@@ -455,11 +455,11 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#050505] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10 lg:bg-[#050505]"
     >
       {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
-      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto">
-        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-3 sm:px-4 sm:py-4">
+      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto lg:bg-[#050505]">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black px-3 py-3 sm:px-4 sm:py-4 lg:bg-transparent">
           <p className="text-sm font-medium text-white">المجتمع</p>
           <span
             className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
@@ -545,12 +545,12 @@ export function CommunityView({
         </div>
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black lg:bg-[#050505]">
         {tab === "inbox" ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
-            <header className="shrink-0 border-b border-white/10 bg-[#050505] px-3 py-3 text-right sm:px-5 sm:py-4">
+            <header className="shrink-0 border-b border-white/10 bg-black px-3 py-3 text-right sm:px-5 sm:py-4 lg:bg-[#050505]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h1 className="font-display text-sm font-bold text-white sm:text-base">
@@ -581,7 +581,7 @@ export function CommunityView({
               </div>
             </header>
 
-            <div className="premium-scroll flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain bg-[#050505]">
+            <div className="premium-scroll flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain bg-black lg:bg-[#050505]">
               {loading ? (
                 <p className="px-5 py-8 text-right text-sm text-slate-500">
                   بنحمّل الرسائل…
@@ -841,7 +841,7 @@ export function CommunityView({
             {announcementsReadOnly ? (
               <div
                 dir="rtl"
-                className="shrink-0 border-t border-white/10 bg-black px-4 py-6 text-center"
+                className="shrink-0 w-full border-t border-white/10 bg-black px-4 py-6 text-center pb-[max(1.5rem,env(safe-area-inset-bottom))]"
                 role="status"
                 aria-live="polite"
               >
@@ -856,7 +856,8 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="shrink-0 border-t border-white/10 bg-black p-4 text-right"
+              className="shrink-0 w-full border-t border-white/10 bg-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right"
+              style={{ backgroundColor: "#000000" }}
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();
@@ -896,7 +897,7 @@ export function CommunityView({
               ) : null}
 
               <div
-                className={`relative rounded-2xl border bg-white/5 p-3 backdrop-blur-md ${
+                className={`relative rounded-2xl border bg-[#111] p-3 ${
                   chatMuted
                     ? "border-red-400/25 opacity-60"
                     : "border-white/10 focus-within:border-yellow-400/35"

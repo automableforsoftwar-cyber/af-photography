@@ -441,7 +441,7 @@ function Composer({
   return (
     <form
       dir="rtl"
-      className="shrink-0 border-t border-white/10 p-4 text-right"
+      className="shrink-0 w-full border-t border-white/10 bg-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right"
       onSubmit={(e) => {
         e.preventDefault();
         onSend();

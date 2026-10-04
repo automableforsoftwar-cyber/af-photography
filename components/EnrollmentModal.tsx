@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
@@ -11,8 +10,6 @@ import { EGYPT_GOVERNORATES } from "@/lib/governorates";
 import { useAuthStore } from "@/lib/auth-store";
 import { getPostAuthPath } from "@/lib/routing";
 import { supabase } from "@/lib/supabase";
-
-const ease = [0.22, 1, 0.36, 1] as const;
 
 type AuthTab = "signup" | "login";
 
@@ -119,33 +116,24 @@ export function EnrollmentModal({
 
   if (!mounted) return null;
 
+  if (!open) return null;
+
   return createPortal(
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.28 }}
-        >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6">
           <button
             type="button"
             aria-label="قفل النافذة"
-            className="fixed inset-0 bg-black/70 backdrop-blur-md"
+            className="fixed inset-0 bg-black/85"
             onClick={loading ? undefined : onClose}
             disabled={loading}
           />
 
-          <motion.div
+          <div
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative my-auto w-full max-w-md max-h-[min(100svh,100dvh)] overflow-y-auto rounded-3xl border border-white/10 bg-[#0c0c0c]/95 shadow-[0_40px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 14, scale: 0.98 }}
-            transition={{ duration: 0.4, ease }}
+            className="relative my-auto w-full max-w-md max-h-[min(100svh,100dvh)] overflow-y-auto rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
+            style={{ backgroundColor: "#0a0a0a" }}
           >
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-transparent to-transparent"
@@ -322,10 +310,8 @@ export function EnrollmentModal({
                 </PremiumButton>
               </form>
             </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>,
+          </div>
+    </div>,
     document.body,
   );
 }

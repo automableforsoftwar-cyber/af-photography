@@ -39,7 +39,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   background: #050505;
   overflow-x: clip;
   text-rendering: optimizeLegibility;

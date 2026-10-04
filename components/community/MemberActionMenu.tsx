@@ -106,9 +106,13 @@ export function MemberActionMenu({
         <div
           ref={drawerRef}
           role="menu"
-          className="fixed inset-y-0 left-0 z-[10001] flex w-64 transform flex-col border-r border-white/10 bg-black transition-transform lg:hidden"
+          className="fixed inset-y-0 left-0 z-[10001] flex h-[100dvh] w-64 flex-col border-r border-white/10 lg:hidden"
+          style={{ backgroundColor: "#0a0a0a" }}
         >
-          <div className="border-b border-white/10 px-4 py-4">
+          <div
+            className="border-b border-white/10 px-4 py-4"
+            style={{ backgroundColor: "#0a0a0a" }}
+          >
             <p className="text-xs font-medium text-yellow-400">إجراءات العضو</p>
             {memberName ? (
               <p className="mt-1 truncate text-sm font-semibold text-white">
