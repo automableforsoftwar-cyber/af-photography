@@ -479,6 +479,7 @@ export function CommunityView({
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <AiLearningChat
+          key={`assistant-${courseModule.id}`}
           course={courseModule}
           scope="community"
           onBackToCommunity={() => setShowAssistant(false)}
@@ -1031,21 +1032,21 @@ export function CommunityView({
         )}
       </section>
 
-      {/* Desktop: Learning Assistant on the opposite side of the channel list */}
+      {/* Desktop: مساعد التعلم opposite the community channel list (not a channel) */}
       {courseModule ? (
-        <aside className="hidden w-14 shrink-0 flex-col items-center border-e border-white/10 bg-black/20 py-4 lg:flex">
+        <aside className="hidden w-16 shrink-0 flex-col items-center gap-3 border-e border-white/10 bg-gradient-to-b from-yellow-400/10 to-transparent py-5 lg:flex">
           <button
             type="button"
             onClick={() => setShowAssistant(true)}
             title="مساعد التعلم"
             aria-label="فتح مساعد التعلم"
-            className="flex flex-col items-center gap-2 rounded-xl border border-yellow-400/30 bg-yellow-400/10 px-2 py-3 text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505]"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-yellow-400/40 bg-yellow-400/15 px-2.5 py-4 text-yellow-400 shadow-[0_0_24px_rgba(251,191,36,0.12)] transition hover:bg-yellow-400 hover:text-[#050505]"
           >
-            <span className="text-base leading-none" aria-hidden>
+            <span className="text-lg leading-none" aria-hidden>
               ✦
             </span>
             <span
-              className="text-[0.65rem] font-medium tracking-wide"
+              className="text-[0.7rem] font-semibold tracking-wide"
               style={{ writingMode: "vertical-rl" }}
             >
               مساعد التعلم

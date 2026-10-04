@@ -15,9 +15,7 @@ import {
   persistAssistantSessionId,
   sendAssistantMessage,
   type AssistantContext,
-  N8N_WORKFLOW_NAMES,
-  SMART_START_COURSE,
-  isSmartStartCourse,
+  resolveAssistantRoute,
 } from "@/lib/n8n-assistant";
 import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 
@@ -244,18 +242,12 @@ export function AiLearningChat({
     setSending(false);
   };
 
-  const isSmartStart = isSmartStartCourse({
+  const route = resolveAssistantRoute({
     courseId: course.id,
     courseName: course.title,
   });
-  const workflowLabel =
-    scope === "community"
-      ? N8N_WORKFLOW_NAMES.community
-      : N8N_WORKFLOW_NAMES.learningSmartStart;
-  const courseLabel =
-    scope === "learning" && isSmartStart
-      ? SMART_START_COURSE.name
-      : course.title;
+  const workflowLabel = route.workflowName;
+  const courseLabel = route.courseNameForPayload;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
@@ -276,7 +268,7 @@ export function AiLearningChat({
             <button
               type="button"
               onClick={onBackToCommunity}
-              className="shrink-0 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1.5 text-xs font-medium text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:text-sm"
+              className="shrink-0 rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_20px_rgba(251,191,36,0.25)] transition hover:bg-yellow-300 sm:text-sm"
             >
               الرجوع للمجتمع
             </button>

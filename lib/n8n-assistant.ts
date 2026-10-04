@@ -1,13 +1,16 @@
 /**
- * n8n Learning / Community Assistant client.
+ * Strict per-COURSE n8n routing (not by UI scope):
  *
- * Strict workflow mapping:
- * - Community scope → "chat bot انسان بعين مصور" → /webhook/afp-community-chatbot
- * - Course "بدايه رحلتك الذكيه" (id: smart-start) → "assisted chatbot بداية"
- *   → /webhook/afp-learning-chatbot
+ *  a) "إنسان بعين مصور" (photographer-eye)
+ *     → workflow "chat bot انسان بعين مصور"
+ *     → POST /webhook/afp-community-chatbot
  *
- * Payload (learning / smart-start):
- *   { message, session_id, user_id, course_name, course_id?, context, workflow_name }
+ *  b) "بدايه رحلتك الذكيه" (smart-start)
+ *     → workflow "assisted chatbot بداية"
+ *     → POST /webhook/afp-learning-chatbot
+ *
+ * Payload always includes: message, session_id, user_id
+ * (+ course_id, course_name, workflow_name, context when known)
  */
 
 export type AssistantContext = "learning" | "community";
@@ -24,75 +27,91 @@ export type AssistantReply =
       sessionId: string | null;
     };
 
-/** Exact n8n workflow names required by product. */
+export type AssistantRouteKey = "photographerEye" | "smartStart";
+
+/** Exact n8n workflow names. */
 export const N8N_WORKFLOW_NAMES = {
-  community: "chat bot انسان بعين مصور",
-  learningSmartStart: "assisted chatbot بداية",
+  photographerEye: "chat bot انسان بعين مصور",
+  smartStart: "assisted chatbot بداية",
 } as const;
 
-/** Canonical course linked to "assisted chatbot بداية". */
+/** Course «بدايه رحلتك الذكيه» → assisted chatbot بداية */
 export const SMART_START_COURSE = {
   id: "smart-start",
-  /** Product / n8n label (user spelling). */
   name: "بدايه رحلتك الذكيه",
-  /** Title as stored in lib/content.ts */
   contentTitle: "بداية رحلتك الذكية",
+} as const;
+
+/** Course «إنسان بعين مصور» → chat bot انسان بعين مصور */
+export const PHOTOGRAPHER_EYE_COURSE = {
+  id: "photographer-eye",
+  name: "إنسان بعين مصور",
+  contentTitle: "إنسان بعين مصور",
 } as const;
 
 const N8N_BASE = "https://n8n.srv1960854.hstgr.cloud/webhook";
 
-const WEBHOOKS = {
-  community: `${N8N_BASE}/afp-community-chatbot`,
-  learningSmartStart: `${N8N_BASE}/afp-learning-chatbot`,
-} as const;
+const WEBHOOKS: Record<AssistantRouteKey, string> = {
+  photographerEye: `${N8N_BASE}/afp-community-chatbot`,
+  smartStart: `${N8N_BASE}/afp-learning-chatbot`,
+};
 
-/** Normalize Arabic alef/ya variants for title matching. */
+/** Normalize Arabic alef/ya/taa-marbuta for title matching. */
 function normalizeArabicTitle(value: string): string {
   return value
     .trim()
-    .replace(/[\u0640]/g, "") // tatweel
+    .replace(/[\u0640]/g, "")
     .replace(/[أإآا]/g, "ا")
     .replace(/[ىي]/g, "ي")
     .replace(/ة/g, "ه")
     .replace(/\s+/g, " ");
 }
 
-/** True when the active course is «بدايه رحلتك الذكيه» / smart-start. */
+function titleMatches(candidate: string | null | undefined, ...aliases: string[]) {
+  if (!candidate?.trim()) return false;
+  const n = normalizeArabicTitle(candidate);
+  return aliases.some((a) => n === normalizeArabicTitle(a));
+}
+
 export function isSmartStartCourse(input: {
   courseId?: string | null;
   courseName?: string | null;
 }): boolean {
   if (input.courseId?.trim() === SMART_START_COURSE.id) return true;
-  const name = input.courseName?.trim();
-  if (!name) return false;
-  const normalized = normalizeArabicTitle(name);
-  return (
-    normalized === normalizeArabicTitle(SMART_START_COURSE.name) ||
-    normalized === normalizeArabicTitle(SMART_START_COURSE.contentTitle)
+  return titleMatches(
+    input.courseName,
+    SMART_START_COURSE.name,
+    SMART_START_COURSE.contentTitle,
   );
 }
 
-function resolveRoute(input: {
-  scope: AssistantContext;
+export function isPhotographerEyeCourse(input: {
+  courseId?: string | null;
+  courseName?: string | null;
+}): boolean {
+  if (input.courseId?.trim() === PHOTOGRAPHER_EYE_COURSE.id) return true;
+  return titleMatches(
+    input.courseName,
+    PHOTOGRAPHER_EYE_COURSE.name,
+    PHOTOGRAPHER_EYE_COURSE.contentTitle,
+    "انسان بعين مصور",
+  );
+}
+
+/**
+ * Resolve webhook STRICTLY from the active course.
+ * UI scope (community vs learning) does NOT pick the workflow.
+ */
+export function resolveAssistantRoute(input: {
   courseId?: string;
   courseName?: string;
 }): {
+  key: AssistantRouteKey;
   webhookUrl: string;
   workflowName: string;
-  courseNameForPayload: string | null;
+  courseNameForPayload: string;
+  courseIdForPayload: string;
 } {
-  // Community chatbot — always the community workflow
-  if (input.scope === "community") {
-    return {
-      webhookUrl:
-        process.env.NEXT_PUBLIC_N8N_COMMUNITY_WEBHOOK?.trim() ||
-        WEBHOOKS.community,
-      workflowName: N8N_WORKFLOW_NAMES.community,
-      courseNameForPayload: null,
-    };
-  }
-
-  // Course «بدايه رحلتك الذكيه» → assisted chatbot بداية (strict)
   if (
     isSmartStartCourse({
       courseId: input.courseId,
@@ -100,21 +119,28 @@ function resolveRoute(input: {
     })
   ) {
     return {
+      key: "smartStart",
       webhookUrl:
+        process.env.NEXT_PUBLIC_N8N_SMART_START_WEBHOOK?.trim() ||
         process.env.NEXT_PUBLIC_N8N_LEARNING_WEBHOOK?.trim() ||
-        WEBHOOKS.learningSmartStart,
-      workflowName: N8N_WORKFLOW_NAMES.learningSmartStart,
+        WEBHOOKS.smartStart,
+      workflowName: N8N_WORKFLOW_NAMES.smartStart,
       courseNameForPayload: SMART_START_COURSE.name,
+      courseIdForPayload: SMART_START_COURSE.id,
     };
   }
 
-  // Learning fallback: still use the Start Learning webhook when no other map exists
+  // Default / explicit: إنسان بعين مصور
   return {
+    key: "photographerEye",
     webhookUrl:
-      process.env.NEXT_PUBLIC_N8N_LEARNING_WEBHOOK?.trim() ||
-      WEBHOOKS.learningSmartStart,
-    workflowName: N8N_WORKFLOW_NAMES.learningSmartStart,
-    courseNameForPayload: input.courseName?.trim() || null,
+      process.env.NEXT_PUBLIC_N8N_PHOTOGRAPHER_WEBHOOK?.trim() ||
+      process.env.NEXT_PUBLIC_N8N_COMMUNITY_WEBHOOK?.trim() ||
+      WEBHOOKS.photographerEye,
+    workflowName: N8N_WORKFLOW_NAMES.photographerEye,
+    courseNameForPayload: PHOTOGRAPHER_EYE_COURSE.name,
+    courseIdForPayload:
+      input.courseId?.trim() || PHOTOGRAPHER_EYE_COURSE.id,
   };
 }
 
@@ -164,7 +190,7 @@ export function persistAssistantSessionId(input: {
 }
 
 /**
- * Send a chat turn to the correct n8n workflow and store Session ID.
+ * Send a chat turn to the course-specific n8n workflow and store Session ID.
  */
 export async function sendAssistantMessage(input: {
   message: string;
@@ -188,8 +214,7 @@ export async function sendAssistantMessage(input: {
       courseId: input.courseId,
     });
 
-  const route = resolveRoute({
-    scope: input.scope,
+  const route = resolveAssistantRoute({
     courseId: input.courseId,
     courseName: input.courseName,
   });
@@ -200,14 +225,9 @@ export async function sendAssistantMessage(input: {
     user_id: input.userId || "anon",
     context: input.scope,
     workflow_name: route.workflowName,
+    course_name: route.courseNameForPayload,
+    course_id: input.courseId?.trim() || route.courseIdForPayload,
   };
-
-  if (input.courseId) body.course_id = input.courseId;
-  if (route.courseNameForPayload) {
-    body.course_name = route.courseNameForPayload;
-  } else if (input.courseName?.trim()) {
-    body.course_name = input.courseName.trim();
-  }
   if (input.imageDataUrl) body.image = input.imageDataUrl;
 
   try {
