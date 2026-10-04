@@ -75,8 +75,8 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
         >
-          {hero.stats.map((stat) => (
-            <div key={stat.value} className="py-6 sm:pe-8">
+          {hero.stats.map((stat, index) => (
+            <div key={`hero-stat-${index}-${stat.value}`} className="py-6 sm:pe-8">
               <dd className="font-display text-base font-bold leading-snug text-yellow-400 sm:text-lg">
                 {stat.value}
               </dd>

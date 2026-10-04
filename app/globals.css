@@ -41,7 +41,7 @@
 html {
   scroll-behavior: auto;
   background: #050505;
-  overflow-x: clip;
+  overflow-x: hidden;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -92,7 +92,7 @@ body {
   font-family: var(--font-alexandria), Tahoma, "Segoe UI", ui-sans-serif, sans-serif;
   font-weight: 400;
   line-height: 1.8;
-  overflow-x: clip;
+  overflow-x: hidden;
   text-align: right;
 }
 

@@ -174,7 +174,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
 
   return (
     <AuthGate>
-      <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#050505]">
+      <div className="relative flex h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-[#050505]">
         {/* Desktop top nav — logo + links only (no logout in header) */}
         <nav
           aria-label="إجراءات اللوحة"

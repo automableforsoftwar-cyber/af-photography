@@ -37,10 +37,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="ar"
       dir="rtl"
-      className={`${alexandria.variable} ${kufam.variable} h-full overflow-x-clip antialiased`}
+      className={`${alexandria.variable} ${kufam.variable} h-full overflow-x-hidden antialiased`}
     >
       <body
-        className={`${alexandria.className} relative min-h-full overflow-x-clip bg-[#050505] font-sans font-normal leading-relaxed text-slate-400 antialiased`}
+        className={`${alexandria.className} relative min-h-full overflow-x-hidden bg-[#050505] font-sans font-normal leading-relaxed text-slate-400 antialiased`}
       >
         <StoreHydration />
         <a
