@@ -14,7 +14,6 @@ import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
@@ -23,15 +22,6 @@ export function Navbar() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 24);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -134,14 +124,7 @@ export function Navbar() {
       : null;
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 ${
-        scrolled || open
-          ? "border-b border-white/10 bg-[#0a0a0a]"
-          : "border-b border-transparent bg-transparent"
-      }`}
-      style={scrolled || open ? { backgroundColor: "#0a0a0a" } : undefined}
-    >
+    <header className="absolute top-0 z-50 w-full bg-transparent">
       <nav
         dir="ltr"
         className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-5 sm:px-8 lg:px-10"

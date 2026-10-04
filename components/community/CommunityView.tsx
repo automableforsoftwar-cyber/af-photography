@@ -462,18 +462,20 @@ export function CommunityView({
       <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto lg:bg-[#050505]">
         <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black px-3 py-3 sm:px-4 sm:py-4 lg:bg-transparent">
           <p className="text-sm font-medium text-white">المجتمع</p>
-          <span
-            className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
-            title="الرسائل الخاصة"
-            aria-label={
-              hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
-            }
-          >
-            ✉
-            {hasAnyUnread ? (
-              <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
-            ) : null}
-          </span>
+          {(role === "organizer" || role === "instructor") && (
+            <span
+              className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
+              title="الرسائل الخاصة"
+              aria-label={
+                hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
+              }
+            >
+              ✉
+              {hasAnyUnread ? (
+                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+              ) : null}
+            </span>
+          )}
         </div>
         <ul className="flex gap-1 overflow-x-auto p-2 premium-scroll lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
           {tabs.map((t) => {
