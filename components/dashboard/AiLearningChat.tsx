@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CourseModule } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
@@ -17,31 +16,11 @@ import {
   type AssistantContext,
   resolveAssistantRoute,
 } from "@/lib/n8n-assistant";
-import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
-
-const ease = [0.22, 1, 0.36, 1] as const;
 
 type Msg = {
   id: string;
   role: "ai" | "user";
   text: string;
-};
-
-const list = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06 },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease },
-  },
 };
 
 function welcomeText(scope: AssistantContext, courseTitle: string) {
@@ -75,7 +54,6 @@ export function AiLearningChat({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<RtlScrollHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,12 +140,7 @@ export function AiLearningChat({
 
   useEffect(() => {
     if (!historyReady) return;
-    const id = window.setTimeout(() => {
-      scrollRef.current?.scrollToBottom(
-        messages.length <= 2 ? "auto" : "smooth",
-      );
-    }, 40);
-    return () => window.clearTimeout(id);
+    endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [messages.length, sending, historyReady]);
 
   const send = async () => {
@@ -250,8 +223,8 @@ export function AiLearningChat({
   const courseLabel = route.courseNameForPayload;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
-      <header className="shrink-0 border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]">
+      <header className="shrink-0 border-b border-white/10 bg-[#050505] px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0 text-right">
             <p className="text-xs font-medium tracking-wide text-yellow-400">
@@ -268,7 +241,7 @@ export function AiLearningChat({
             <button
               type="button"
               onClick={onBackToCommunity}
-              className="shrink-0 rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_20px_rgba(251,191,36,0.25)] transition hover:bg-yellow-300 sm:text-sm"
+              className="shrink-0 rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-xs font-semibold text-[#050505] sm:text-sm"
             >
               الرجوع للمجتمع
             </button>
@@ -276,30 +249,24 @@ export function AiLearningChat({
         </div>
       </header>
 
-      <RtlScroll ref={scrollRef} className="min-h-0 flex-1">
+      <div className="premium-scroll min-h-0 flex-1 overflow-y-auto bg-[#050505]">
         {!historyReady ? (
           <p className="px-4 py-8 text-sm text-slate-500 sm:px-6">
             بنحمّل محادثتك السابقة…
           </p>
         ) : (
-          <motion.div
-            variants={list}
-            initial="hidden"
-            animate="show"
-            className="space-y-3 px-3 py-4 sm:px-6 sm:py-5"
-          >
+          <div className="space-y-3 px-3 py-4 sm:px-6 sm:py-5">
             {messages.map((msg) => {
               const mine = msg.role === "user";
               return (
-                <motion.div
+                <div
                   key={msg.id}
-                  variants={item}
                   className={`flex w-full ${mine ? "justify-start" : "justify-end"}`}
                 >
                   <div
                     className={`max-w-[min(100%,36rem)] rounded-2xl px-4 py-3 text-start text-sm leading-relaxed ${
                       mine
-                        ? "bg-yellow-400 text-[#050505] shadow-[0_0_24px_rgba(251,191,36,0.2)]"
+                        ? "bg-yellow-400 text-[#050505]"
                         : "border border-white/10 bg-white/5 text-slate-200"
                     }`}
                   >
@@ -310,25 +277,25 @@ export function AiLearningChat({
                     ) : null}
                     {msg.text}
                   </div>
-                </motion.div>
+                </div>
               );
             })}
             {sending ? (
               <p className="px-1 text-xs text-slate-500">المساعد بيكتب…</p>
             ) : null}
             <div ref={endRef} />
-          </motion.div>
+          </div>
         )}
-      </RtlScroll>
+      </div>
 
       <form
-        className="shrink-0 border-t border-white/10 p-3 sm:p-5"
+        className="shrink-0 border-t border-white/10 bg-[#050505] p-4"
         onSubmit={(event) => {
           event.preventDefault();
           void send();
         }}
       >
-        <div className="rounded-2xl border border-white/10 bg-black/40 p-3 backdrop-blur-md focus-within:border-yellow-400/40">
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-3 focus-within:border-yellow-400/40">
           <label className="sr-only" htmlFor="ai-learn-input">
             رسالتك للمساعد
           </label>

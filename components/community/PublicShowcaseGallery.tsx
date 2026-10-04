@@ -6,7 +6,6 @@
  * Guests who click تصويت are blocked and shown Login / Sign Up.
  */
 
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -18,25 +17,6 @@ import {
 import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
 import { useAuthStore } from "@/lib/auth-store";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
-
-const ease = [0.22, 1, 0.36, 1] as const;
-
-const galleryList = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07 },
-  },
-};
-
-const galleryItem = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, ease },
-  },
-};
 
 export function PublicShowcaseGallery() {
   const hydrated = usePersistHydrated(useAuthStore.persist);
@@ -124,7 +104,7 @@ export function PublicShowcaseGallery() {
         dir="rtl"
         className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1"
       >
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+        <section className="rounded-2xl border border-white/10 bg-[#0a0a0a] p-5 sm:p-6">
           <p className="text-xs font-medium text-yellow-400">مسابقات عامة</p>
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             صور المسابقة الجارية — صوّت للي عاجبك
@@ -149,31 +129,24 @@ export function PublicShowcaseGallery() {
           ) : posts.length === 0 ? (
             <p className="mt-4 text-sm text-slate-500">لسه مفيش صور معروضة.</p>
           ) : (
-            <motion.div
-              variants={galleryList}
-              initial="hidden"
-              animate="show"
-              className="mt-4 grid gap-4 sm:grid-cols-2"
-            >
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {posts.map((entry) => (
-                <motion.article
+                <article
                   key={entry.id}
-                  variants={galleryItem}
-                  whileHover={{ scale: 1.02 }}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]"
                 >
-                    <button
-                      type="button"
-                      onClick={() => setLightboxSrc(entry.image_url)}
-                      className="relative aspect-[4/3] w-full overflow-hidden text-start"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={entry.image_url}
-                        alt={entry.title}
-                        className="h-full w-full object-cover transition hover:scale-[1.02]"
-                      />
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(entry.image_url)}
+                    className="relative aspect-[4/3] w-full overflow-hidden text-start"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={entry.image_url}
+                      alt={entry.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
                       <p className="truncate font-medium text-white">
@@ -208,9 +181,9 @@ export function PublicShowcaseGallery() {
                           : "تصويت"}
                     </button>
                   </div>
-                </motion.article>
+                </article>
               ))}
-            </motion.div>
+            </div>
           )}
         </section>
       </div>

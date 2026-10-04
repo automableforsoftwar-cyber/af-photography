@@ -4,7 +4,6 @@
  * Course competition — device file upload, name + description, one vote per user.
  */
 
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -18,25 +17,6 @@ import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
-
-const ease = [0.22, 1, 0.36, 1] as const;
-
-const galleryList = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07 },
-  },
-};
-
-const galleryItem = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, ease },
-  },
-};
 
 export function CompetitionPhotoVoting() {
   const userId = useAuthStore((s) => s.userId);
@@ -153,7 +133,7 @@ export function CompetitionPhotoVoting() {
         dir="rtl"
         className="order-1 flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1 lg:order-2"
       >
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+        <section className="rounded-2xl border border-white/10 bg-[#0a0a0a] p-5 sm:p-6">
           <p className="text-xs font-medium text-yellow-400">المسابقات</p>
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             شارك فريمك… أو صوّت للأحسن
@@ -201,31 +181,24 @@ export function CompetitionPhotoVoting() {
           ) : posts.length === 0 ? (
             <p className="mt-4 text-sm text-slate-500">لسه مفيش صور معروضة.</p>
           ) : (
-            <motion.div
-              variants={galleryList}
-              initial="hidden"
-              animate="show"
-              className="mt-4 grid gap-4 sm:grid-cols-2"
-            >
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {posts.map((entry) => (
-                <motion.article
+                <article
                   key={entry.id}
-                  variants={galleryItem}
-                  whileHover={{ scale: 1.02 }}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]"
                 >
-                    <button
-                      type="button"
-                      onClick={() => setLightboxSrc(entry.image_url)}
-                      className="relative aspect-[4/3] w-full overflow-hidden text-start"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={entry.image_url}
-                        alt={entry.description || entry.title}
-                        className="h-full w-full object-cover transition hover:scale-[1.02]"
-                      />
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(entry.image_url)}
+                    className="relative aspect-[4/3] w-full overflow-hidden text-start"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={entry.image_url}
+                      alt={entry.description || entry.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0 text-start">
                       <p className="truncate font-medium text-white">
@@ -248,14 +221,14 @@ export function CompetitionPhotoVoting() {
                       {entry.voted ? `تم · ${entry.vote_count}` : `▲ ${entry.vote_count}`}
                     </button>
                   </div>
-                </motion.article>
+                </article>
               ))}
-            </motion.div>
+            </div>
           )}
         </section>
       </div>
 
-      <aside className="order-2 h-fit w-full shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:order-1 lg:sticky lg:top-0 lg:w-64 xl:w-72">
+      <aside className="order-2 h-fit w-full shrink-0 rounded-2xl border border-white/10 bg-[#0a0a0a] p-5 lg:order-1 lg:sticky lg:top-0 lg:w-64 xl:w-72">
         <div dir="rtl">
           <h3 className="font-display text-lg font-bold text-white">الترتيب</h3>
           <p className="mt-1 text-xs text-slate-500">حسب الأصوات</p>

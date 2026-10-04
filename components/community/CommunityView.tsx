@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -14,7 +13,6 @@ import { MemberActionMenu } from "@/components/community/MemberActionMenu";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
-import { RtlScroll, type RtlScrollHandle } from "@/components/ui/RtlScroll";
 import { getModuleById } from "@/lib/content";
 import {
   QUICK_REACTIONS,
@@ -48,25 +46,6 @@ const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
     <p className="p-3 text-xs text-slate-500">بنحمّل الإيموجي…</p>
   ),
 });
-
-const ease = [0.22, 1, 0.36, 1] as const;
-
-const list = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 8 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.28, ease },
-  },
-};
 
 function channelLabel(name: string) {
   return `#${name}`;
@@ -119,33 +98,8 @@ export function CommunityView({
   );
   const pickerRef = useRef<HTMLDivElement>(null);
   const reactPickerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatScrollRef = useRef<RtlScrollHandle>(null);
   const activeChatUserRef = useRef(activeChatUser);
   activeChatUserRef.current = activeChatUser;
-
-  useEffect(() => {
-    // Always land on the newest message (bottom) after load / tab change
-    if (loading || tab === "inbox" || showAssistant) return;
-    const timers: number[] = [];
-    const bump = (delay: number, behavior: ScrollBehavior = "auto") => {
-      timers.push(
-        window.setTimeout(() => {
-          chatScrollRef.current?.scrollToBottom(behavior);
-          messagesEndRef.current?.scrollIntoView({
-            block: "end",
-            behavior,
-          });
-        }, delay),
-      );
-    };
-    bump(16);
-    bump(80);
-    bump(220);
-    return () => {
-      for (const id of timers) window.clearTimeout(id);
-    };
-  }, [messages, tab, loading, showAssistant]);
 
   useEffect(() => {
     setTab(initialTab);
@@ -501,7 +455,7 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 text-right shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex-row"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#050505] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
     >
       {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
       <aside className="flex w-full shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto">
@@ -591,12 +545,12 @@ export function CommunityView({
         </div>
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
         {tab === "inbox" ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
-            <header className="shrink-0 border-b border-white/10 px-3 py-3 text-right sm:px-5 sm:py-4">
+            <header className="shrink-0 border-b border-white/10 bg-[#050505] px-3 py-3 text-right sm:px-5 sm:py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h1 className="font-display text-sm font-bold text-white sm:text-base">
@@ -614,12 +568,11 @@ export function CommunityView({
                         : "إدارة · نشر للجميع"}
                     </span>
                   ) : null}
-                  {/* Mobile: Assistant entry opposite the channels strip */}
                   {courseModule ? (
                     <button
                       type="button"
                       onClick={() => setShowAssistant(true)}
-                      className="rounded-full border border-yellow-400/35 bg-yellow-400/10 px-3 py-1.5 text-[0.7rem] font-medium text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] lg:hidden"
+                      className="rounded-full border border-yellow-400/35 bg-yellow-400/10 px-3 py-1.5 text-[0.7rem] font-medium text-yellow-400 lg:hidden"
                     >
                       مساعد التعلم
                     </button>
@@ -628,10 +581,7 @@ export function CommunityView({
               </div>
             </header>
 
-            <RtlScroll
-              ref={chatScrollRef}
-              className="min-h-0 flex-1 overscroll-contain pb-[env(safe-area-inset-bottom)]"
-            >
+            <div className="premium-scroll flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain bg-[#050505]">
               {loading ? (
                 <p className="px-5 py-8 text-right text-sm text-slate-500">
                   بنحمّل الرسائل…
@@ -643,15 +593,11 @@ export function CommunityView({
                     : "لسه مفيش رسائل — ابدأ النقاش أو ارفع صورة من جهازك."}
                 </p>
               ) : (
-                <motion.div
+                <div
                   key={`${courseId}-${channelId}`}
-                  variants={list}
-                  initial="hidden"
-                  animate="show"
-                  className="flex min-h-full flex-col justify-end space-y-1 px-2 py-3"
+                  className="space-y-1 px-2 py-3"
                   dir="rtl"
                 >
-                  <AnimatePresence mode="popLayout">
                     {messages.map((message) => {
                       const mine = message.user_id === userId;
                       const label =
@@ -683,10 +629,8 @@ export function CommunityView({
                       const menuOpen = menuFor === message.id;
 
                       return (
-                        <motion.article
+                        <article
                           key={message.id}
-                          variants={item}
-                          layout
                           className={`group relative flex flex-row gap-3 overflow-visible rounded-xl px-4 py-3 text-right ${
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
@@ -887,19 +831,17 @@ export function CommunityView({
                               </div>
                             </div>
                           </div>
-                        </motion.article>
+                        </article>
                       );
                     })}
-                  </AnimatePresence>
-                  <div ref={messagesEndRef} />
-                </motion.div>
+                </div>
               )}
-            </RtlScroll>
+            </div>
 
             {announcementsReadOnly ? (
               <div
                 dir="rtl"
-                className="shrink-0 border-t border-white/10 bg-white/[0.04] px-4 py-6 text-center"
+                className="shrink-0 border-t border-white/10 bg-black px-4 py-6 text-center"
                 role="status"
                 aria-live="polite"
               >
@@ -914,7 +856,7 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="sticky bottom-0 z-20 shrink-0 border-t border-white/10 bg-[#050505]/95 p-3 text-right backdrop-blur-md sm:p-4 lg:static lg:bg-transparent lg:backdrop-blur-none"
+              className="shrink-0 border-t border-white/10 bg-black p-4 text-right"
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();

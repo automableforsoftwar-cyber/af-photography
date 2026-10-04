@@ -83,6 +83,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
     };
   }, [mobileNavOpen]);
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
     router.replace(`/dashboard/courses/${encodeURIComponent(id)}`);
@@ -123,8 +127,8 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           </div>
         </nav>
 
-        {/* Mobile top bar + drawer trigger */}
-        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#050505]/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+        {/* Mobile top bar — solid so page text never bleeds through */}
+        <div className="fixed inset-x-0 top-0 z-[60] flex items-center justify-between border-b border-white/10 bg-black px-4 py-3 lg:hidden">
           <p className="font-display text-sm font-bold text-yellow-400">
             {site.name}
           </p>
@@ -137,69 +141,63 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             onClick={() => setMobileNavOpen((v) => !v)}
           >
             <span
-              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+              className={`absolute h-px w-5 bg-white ${
                 mobileNavOpen ? "rotate-45" : "-translate-y-1.5"
               }`}
             />
             <span
-              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+              className={`absolute h-px w-5 bg-white ${
                 mobileNavOpen ? "-rotate-45" : "translate-y-1.5"
               }`}
             />
           </button>
         </div>
 
-        <div
-          className={`fixed inset-0 z-40 lg:hidden ${
-            mobileNavOpen ? "pointer-events-auto" : "pointer-events-none"
-          }`}
-        >
-          <button
-            type="button"
-            aria-label="إغلاق القائمة"
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
-              mobileNavOpen ? "opacity-100" : "opacity-0"
-            }`}
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <aside
-            id="dashboard-mobile-menu"
-            className={`fixed inset-y-0 left-0 w-64 transform bg-black transition-transform duration-300 ${
-              mobileNavOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
-          >
-            <div className="border-b border-white/10 px-5 py-5">
-              <p className="font-display text-lg font-bold text-yellow-400">
-                القائمة
-              </p>
-              <p className="mt-1 text-xs text-slate-500">تنقّل اللوحة</p>
-            </div>
-            <ul className="flex flex-col gap-1 p-3">
-              {navItems.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => setMobileNavOpen(false)}
-                      className={`block rounded-xl px-3 py-3 text-sm font-medium transition ${
-                        active
-                          ? "bg-yellow-400/15 text-yellow-400"
-                          : "text-white hover:bg-white/5 hover:text-yellow-400"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="border-t border-white/10 p-4">
-              <AuthButton appearance="plain" intent="exit-home" />
-            </div>
-          </aside>
-        </div>
+        {mobileNavOpen ? (
+          <div className="fixed inset-0 z-[70] lg:hidden">
+            <button
+              type="button"
+              aria-label="إغلاق القائمة"
+              className="absolute inset-0 bg-black/70"
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <aside
+              id="dashboard-mobile-menu"
+              className="fixed inset-y-0 left-0 z-[80] flex w-64 flex-col bg-black shadow-2xl"
+            >
+              <div className="border-b border-white/10 bg-black px-5 py-5">
+                <p className="font-display text-lg font-bold text-yellow-400">
+                  القائمة
+                </p>
+                <p className="mt-1 text-xs text-slate-500">تنقّل اللوحة</p>
+              </div>
+              <ul className="flex flex-1 flex-col gap-1 overflow-y-auto bg-black p-3">
+                {navItems.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setMobileNavOpen(false)}
+                        className={`block rounded-xl px-3 py-3 text-sm font-medium ${
+                          active
+                            ? "bg-yellow-400/15 text-yellow-400"
+                            : "text-white hover:bg-white/5 hover:text-yellow-400"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="border-t border-white/10 bg-black p-4">
+                <AuthButton appearance="plain" intent="exit-home" />
+              </div>
+            </aside>
+          </div>
+        ) : null}
 
         <main
           id="main"
