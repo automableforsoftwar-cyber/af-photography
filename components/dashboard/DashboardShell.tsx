@@ -154,11 +154,14 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 })}
               </ul>
               <div
-                className="flex flex-col gap-2 border-t border-white/10 p-4"
+                className="border-t border-white/10 p-4"
                 style={{ backgroundColor: "#0a0a0a" }}
               >
                 <AuthButton appearance="plain" intent="exit-home" />
-                <AuthButton appearance="plain" intent="logout" />
+                {/* Logout is LAST item in the mobile drawer only */}
+                <div className="mt-2">
+                  <AuthButton appearance="plain" intent="logout" />
+                </div>
               </div>
             </aside>
           </div>,
@@ -169,7 +172,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   return (
     <AuthGate>
       <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#050505]">
-        {/* Desktop top nav — brand on the right (RTL start), logout at the far end */}
+        {/* Desktop top nav — logo + links only (no logout in header) */}
         <nav
           aria-label="إجراءات اللوحة"
           className="pointer-events-none fixed inset-x-0 top-4 z-50 hidden justify-center px-3 lg:flex"
@@ -184,7 +187,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             >
               <Image
                 src="/images/af-mark.svg"
-                alt=""
+                alt={site.name}
                 width={28}
                 height={28}
                 className="rounded-md"
@@ -212,31 +215,15 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 );
               })}
             </div>
-            <div className="flex shrink-0 items-center gap-3 border-s border-white/10 ps-4">
-              <AuthButton appearance="plain" intent="exit-home" />
-              <AuthButton appearance="plain" intent="logout" />
-            </div>
           </div>
         </nav>
 
-        {/* Mobile top bar — logo/name only on the right; menu toggle on the left */}
+        {/* Mobile top bar — ONLY hamburger (left) + logo (right) */}
         <div
-          dir="rtl"
+          dir="ltr"
           className="fixed inset-x-0 top-0 z-[60] flex items-center justify-between border-b border-white/10 px-4 py-3 lg:hidden"
           style={{ backgroundColor: "#0a0a0a" }}
         >
-          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
-            <Image
-              src="/images/af-mark.svg"
-              alt=""
-              width={28}
-              height={28}
-              className="shrink-0 rounded-md"
-            />
-            <p className="font-display truncate text-sm font-bold text-yellow-400">
-              {site.name}
-            </p>
-          </Link>
           <button
             type="button"
             aria-expanded={mobileNavOpen}
@@ -256,6 +243,18 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
               }`}
             />
           </button>
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <p className="font-display truncate text-sm font-bold text-yellow-400">
+              {site.name}
+            </p>
+            <Image
+              src="/images/af-mark.svg"
+              alt={site.name}
+              width={28}
+              height={28}
+              className="shrink-0 rounded-md"
+            />
+          </Link>
         </div>
 
         {mobileMenu}

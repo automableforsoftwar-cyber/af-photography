@@ -16,7 +16,6 @@ import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RoleBadge } from "@/components/community/RoleBadge";
-import { getInitials } from "@/lib/display-name";
 
 export type ActiveChatUser = {
   userId: string;
@@ -69,7 +68,6 @@ export function DirectMessageDrawer({
 
   const isSelf = Boolean(myId && peerUserId === myId);
   const canSend = Boolean((draft.trim() || file) && !chatMuted);
-  const initials = getInitials(peerName);
 
   useEffect(() => {
     setMounted(true);
@@ -266,12 +264,9 @@ export function DirectMessageDrawer({
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-black"
-              style={{ backgroundColor: "#FFD700" }}
-            >
-              {initials}
-            </span>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
+              {peerName ? peerName.substring(0, 2).toUpperCase() : "AF"}
+            </div>
             <div className="min-w-0 text-right">
               <p className="text-[0.65rem] text-slate-500">رسالة خاصة</p>
               <div className="flex flex-wrap items-center justify-end gap-2">

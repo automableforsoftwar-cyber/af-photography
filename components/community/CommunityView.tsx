@@ -37,7 +37,7 @@ import {
 } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
-import { getInitials, pickDisplayName } from "@/lib/display-name";
+import { pickDisplayName } from "@/lib/display-name";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -438,6 +438,7 @@ export function CommunityView({
   ];
 
   const courseModule = getModuleById(courseId);
+  const reversedMessages = [...messages].reverse();
 
   if (showAssistant && courseModule) {
     return (
@@ -529,11 +530,10 @@ export function CommunityView({
                           : "text-slate-300 hover:bg-white/5 hover:text-white"
                       }`}
                     >
-                      <span
-                        className="relative flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold text-black"
-                        style={{ backgroundColor: "#FFD700" }}
-                      >
-                        {getInitials(c.peerName)}
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
+                        {c.peerName
+                          ? c.peerName.substring(0, 2).toUpperCase()
+                          : "AF"}
                         {unread ? (
                           <span className="absolute -start-0.5 -top-0.5 size-2 rounded-full bg-red-500 ring-2 ring-[#050505]" />
                         ) : null}
@@ -584,15 +584,18 @@ export function CommunityView({
               </div>
             </header>
 
-            <div className="premium-scroll flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain bg-black lg:bg-[#050505]">
+            <div
+              key={`${courseId}-${channelId}`}
+              className="flex flex-1 flex-col-reverse gap-1 overflow-y-auto bg-black px-2 py-3 lg:bg-[#050505]"
+            >
               {loading ? (
-                <div className="flex min-h-full flex-1 items-center justify-center px-5 py-12 text-gray-400">
+                <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">
                   <p className="text-center text-sm font-medium">
                     جاري تحميل الرسائل...
                   </p>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex min-h-full flex-1 items-center justify-center px-5 py-12 text-gray-400">
+                <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">
                   <p className="text-center text-sm">
                     {isAnnouncements
                       ? "لسه مفيش إعلانات — الإدارة هتنشر هنا لما يبقى فيه تحديث."
@@ -600,16 +603,13 @@ export function CommunityView({
                   </p>
                 </div>
               ) : (
-                <div
-                  key={`${courseId}-${channelId}`}
-                  className="space-y-1 px-2 py-3"
-                  dir="rtl"
-                >
-                    {messages.map((message) => {
+                reversedMessages.map((message) => {
                       const mine = message.user_id === userId;
                       const label =
                         message.author_label || (mine ? "إنت" : "عضو");
-                      const initials = getInitials(label, mine ? "أن" : "عض");
+                      const avatarLetters = label
+                        ? label.substring(0, 2).toUpperCase()
+                        : "AF";
                       const reactionEntries = Object.entries(
                         message.reactions ?? {},
                       ).filter(([, users]) => users.length > 0);
@@ -643,7 +643,7 @@ export function CommunityView({
                             mine ? "bg-yellow-400/5" : "hover:bg-white/5"
                           }`}
                         >
-                          <div className="relative shrink-0">
+                          <div className="relative shrink-0 px-2 py-1">
                             <button
                               type="button"
                               onClick={() => {
@@ -654,16 +654,11 @@ export function CommunityView({
                               }}
                               disabled={mine}
                               title={mine ? undefined : `رسالة إلى ${label}`}
-                              className={`relative flex size-9 items-center justify-center rounded-full text-[0.7rem] font-bold leading-none text-black ${
-                                mine
-                                  ? "cursor-default"
-                                  : "cursor-pointer hover:brightness-110"
+                              className={`relative h-10 w-10 rounded-full bg-yellow-500 text-sm font-bold text-black flex items-center justify-center ${
+                                mine ? "cursor-default" : "cursor-pointer"
                               }`}
-                              style={{ backgroundColor: "#FFD700" }}
                             >
-                              <span className="flex items-center justify-center text-center">
-                                {initials}
-                              </span>
+                              {avatarLetters}
                               {!mine && hasUnread ? (
                                 <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
                               ) : null}
@@ -844,8 +839,7 @@ export function CommunityView({
                           </div>
                         </article>
                       );
-                    })}
-                </div>
+                })
               )}
             </div>
 

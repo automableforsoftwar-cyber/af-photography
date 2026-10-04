@@ -143,31 +143,33 @@ export function Navbar() {
       style={scrolled || open ? { backgroundColor: "#0a0a0a" } : undefined}
     >
       <nav
-        dir="rtl"
+        dir="ltr"
         className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-5 sm:px-8 lg:px-10"
         aria-label="رئيسي"
       >
-        {/* Brand — top-right in RTL */}
-        <a href="#main" className="group flex min-w-0 shrink-0 items-center gap-3">
-          <Image
-            src="/images/af-mark.svg"
-            alt={site.name}
-            width={36}
-            height={36}
-            className="rounded-lg"
-            priority
+        {/* Mobile/Desktop: hamburger LEFT — logout is NEVER in the top header */}
+        <button
+          type="button"
+          className="relative z-50 flex h-10 w-10 shrink-0 items-center justify-center lg:hidden"
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+          aria-label={open ? "اقفل القائمة" : "افتح القائمة"}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span className="sr-only">{open ? "اقفل القائمة" : "افتح القائمة"}</span>
+          <span
+            className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+              open ? "rotate-45" : "-translate-y-1.5"
+            }`}
           />
-          <span className="leading-tight text-start">
-            <span className="block font-display text-base font-bold text-yellow-400 sm:text-lg">
-              {site.name}
-            </span>
-            <span className="hidden text-[0.7rem] font-medium text-slate-400 sm:block">
-              {site.fullName} · {site.project}
-            </span>
-          </span>
-        </a>
+          <span
+            className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+              open ? "-rotate-45" : "translate-y-1.5"
+            }`}
+          />
+        </button>
 
-        <ul className="hidden items-center gap-8 lg:flex">
+        <ul className="hidden flex-1 items-center justify-center gap-8 lg:flex">
           {navLinks.map((link) => (
             <li key={link.href}>
               <a
@@ -180,7 +182,6 @@ export function Navbar() {
           ))}
         </ul>
 
-        {/* Actions — far end (left in RTL); logout never in the brand slot */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
@@ -199,9 +200,6 @@ export function Navbar() {
               >
                 الكورسات
               </a>
-              <span className="hidden sm:inline-flex">
-                <AuthButton appearance="plain" intent="logout" />
-              </span>
             </>
           ) : (
             <button
@@ -212,26 +210,25 @@ export function Navbar() {
               تسجيل دخول / إنشاء حساب
             </button>
           )}
-          <button
-            type="button"
-            className="relative z-50 flex h-10 w-10 items-center justify-center lg:hidden"
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            aria-label={open ? "اقفل القائمة" : "افتح القائمة"}
-            onClick={() => setOpen((value) => !value)}
-          >
-            <span className="sr-only">{open ? "اقفل القائمة" : "افتح القائمة"}</span>
-            <span
-              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
-                open ? "rotate-45" : "-translate-y-1.5"
-              }`}
+          {/* Logo RIGHT */}
+          <a href="#main" className="group flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            <span className="leading-tight text-end">
+              <span className="block font-display text-base font-bold text-yellow-400 sm:text-lg">
+                {site.name}
+              </span>
+              <span className="hidden text-[0.7rem] font-medium text-slate-400 sm:block">
+                {site.fullName} · {site.project}
+              </span>
+            </span>
+            <Image
+              src="/images/af-mark.svg"
+              alt={site.name}
+              width={36}
+              height={36}
+              className="rounded-lg"
+              priority
             />
-            <span
-              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
-                open ? "-rotate-45" : "translate-y-1.5"
-              }`}
-            />
-          </button>
+          </a>
         </div>
       </nav>
 

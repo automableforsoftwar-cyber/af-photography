@@ -241,7 +241,7 @@ export function AiLearningChat({
             <button
               type="button"
               onClick={onBackToCommunity}
-              className="flex shrink-0 items-center justify-center rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-center text-xs font-semibold text-[#050505] sm:text-sm"
+              className="flex w-full items-center justify-center text-center rounded-full border border-yellow-400/50 bg-yellow-400 px-4 py-2 text-xs font-semibold text-[#050505] sm:w-auto sm:text-sm"
             >
               الرجوع للمجتمع
             </button>
