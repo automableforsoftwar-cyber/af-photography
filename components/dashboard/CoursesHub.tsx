@@ -13,6 +13,7 @@ type CoursesHubProps = {
 /** Catalog + VIP on /dashboard/courses — staff see everything unlocked. */
 export function CoursesHub({ onUnlocked }: CoursesHubProps) {
   const unlockedCourseIds = useAuthStore((s) => s.unlockedCourseIds);
+  const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const { isStaff } = useLiveStaffRole();
 
   return (
@@ -59,7 +60,14 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
                   {course.description}
                 </p>
                 <Link
-                  href={`/dashboard/courses/${encodeURIComponent(course.id)}`}
+                  href={
+                    unlocked
+                      ? "/dashboard/community"
+                      : `/dashboard/courses/${encodeURIComponent(course.id)}`
+                  }
+                  onClick={() => {
+                    if (unlocked) setActiveCourseId(course.id);
+                  }}
                   className={`mt-4 inline-flex items-center justify-center rounded-full border px-4 py-2 text-center text-sm font-semibold ${
                     unlocked
                       ? "border-yellow-400/40 bg-yellow-400 text-[#050505] hover:bg-yellow-300"
