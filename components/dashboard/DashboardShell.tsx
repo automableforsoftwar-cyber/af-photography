@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { AuthGate } from "@/components/AuthGate";
 import { AccountView } from "@/components/dashboard/AccountView";
@@ -61,6 +61,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const welcomeName = pickDisplayName(fullName, email);
   const { isStaff, title: staffTitle } = useLiveStaffRole();
   const showAdmin = isStaff;
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navItems = NAV.filter((item) => {
     if (item.staffOnly && !showAdmin) return false;
     if (item.studentsOnly && showAdmin) return false;
@@ -75,28 +76,34 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
     }
   }, [isStaff, section, router]);
 
+  useEffect(() => {
+    document.body.style.overflow = mobileNavOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
+
   const onUnlocked = (id: string) => {
     setActiveCourseId(id);
     router.replace(`/dashboard/courses/${encodeURIComponent(id)}`);
   };
 
+  const isActive = (href: string) =>
+    href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <AuthGate>
       <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505] lg:h-svh lg:overflow-hidden">
+        {/* Desktop top nav */}
         <nav
           aria-label="إجراءات اللوحة"
-          className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-3"
+          className="pointer-events-none fixed inset-x-0 top-4 z-50 hidden justify-center px-3 lg:flex"
         >
           <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:gap-x-5 sm:px-6 sm:py-3">
             {navItems.map((item) => {
-              const active =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : item.href === "/dashboard/community"
-                    ? pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`)
-                    : pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`);
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
@@ -112,14 +119,91 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 </Link>
               );
             })}
-            {/* Exit Course → homepage, stay logged in (no signOut) */}
             <AuthButton appearance="plain" intent="exit-home" />
           </div>
         </nav>
 
+        {/* Mobile top bar + drawer trigger */}
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#050505]/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+          <p className="font-display text-sm font-bold text-yellow-400">
+            {site.name}
+          </p>
+          <button
+            type="button"
+            aria-expanded={mobileNavOpen}
+            aria-controls="dashboard-mobile-menu"
+            aria-label={mobileNavOpen ? "اقفل القائمة" : "افتح القائمة"}
+            className="relative flex h-10 w-10 items-center justify-center"
+            onClick={() => setMobileNavOpen((v) => !v)}
+          >
+            <span
+              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+                mobileNavOpen ? "rotate-45" : "-translate-y-1.5"
+              }`}
+            />
+            <span
+              className={`absolute h-px w-5 bg-white transition-transform duration-300 ${
+                mobileNavOpen ? "-rotate-45" : "translate-y-1.5"
+              }`}
+            />
+          </button>
+        </div>
+
+        <div
+          className={`fixed inset-0 z-40 lg:hidden ${
+            mobileNavOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="إغلاق القائمة"
+            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
+              mobileNavOpen ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside
+            id="dashboard-mobile-menu"
+            className={`fixed inset-y-0 left-0 w-64 transform bg-black transition-transform duration-300 ${
+              mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <div className="border-b border-white/10 px-5 py-5">
+              <p className="font-display text-lg font-bold text-yellow-400">
+                القائمة
+              </p>
+              <p className="mt-1 text-xs text-slate-500">تنقّل اللوحة</p>
+            </div>
+            <ul className="flex flex-col gap-1 p-3">
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setMobileNavOpen(false)}
+                      className={`block rounded-xl px-3 py-3 text-sm font-medium transition ${
+                        active
+                          ? "bg-yellow-400/15 text-yellow-400"
+                          : "text-white hover:bg-white/5 hover:text-yellow-400"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="border-t border-white/10 p-4">
+              <AuthButton appearance="plain" intent="exit-home" />
+            </div>
+          </aside>
+        </div>
+
         <main
           id="main"
-          className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-6 pt-20 sm:px-6 lg:px-8"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-6 pt-16 sm:px-6 lg:px-8 lg:pt-20"
         >
           {section === "home" ? (
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-10 text-center">

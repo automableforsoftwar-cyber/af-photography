@@ -11,10 +11,11 @@ import { useCallback, useEffect, useState } from "react";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
-  fetchCommunityPosts,
+  fetchActiveCompetitionPosts,
   voteOnPost,
   type CommunityPost,
 } from "@/lib/community-posts";
+import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
 import { useAuthStore } from "@/lib/auth-store";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
@@ -52,7 +53,8 @@ export function PublicShowcaseGallery() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await fetchCommunityPosts(userId, "newest");
+    await syncAllCompetitionAnnouncements();
+    const data = await fetchActiveCompetitionPosts(userId);
     setPosts(data);
     setLoading(false);
   }, [userId]);
@@ -78,6 +80,18 @@ export function PublicShowcaseGallery() {
         setPosts((prev) =>
           prev.map((p) => (p.id === postId ? { ...p, voted: true } : p)),
         );
+        return;
+      }
+      if (result.message === "vote_limit") {
+        setNotice("وصلت للحد الأقصى من الأصوات في المسابقة دي.");
+        return;
+      }
+      if (result.message === "not_started") {
+        setNotice("المسابقة لسه ما بدأتش.");
+        return;
+      }
+      if (result.message === "ended") {
+        setNotice("المسابقة خلصت — التصويت مقفول.");
         return;
       }
       setNotice("مقدرناش نسجّل الصوت. حاول تاني.");
@@ -111,13 +125,13 @@ export function PublicShowcaseGallery() {
         className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1"
       >
         <section className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
-          <p className="text-xs font-medium text-yellow-400">معرض الطلبة</p>
+          <p className="text-xs font-medium text-yellow-400">مسابقات عامة</p>
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
-            شوف شغل الطلبة — وصوّت للي عاجبك
+            صور المسابقة الجارية — صوّت للي عاجبك
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            الكل يقدر يشوف الصور وعدد الأصوات. التصويت للمستخدمين المسجّلين فقط —
-            الضيوف هيتم تحويلهم لتسجيل الدخول / إنشاء حساب.
+            مشاركات المسابقات النشطة ظاهرة هنا للجميع. التصويت للمستخدمين
+            المسجّلين فقط — الضيوف هيتحولوا لتسجيل الدخول / إنشاء حساب.
           </p>
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90" role="status">
@@ -127,7 +141,9 @@ export function PublicShowcaseGallery() {
         </section>
 
         <section>
-          <h3 className="font-display text-xl font-bold text-white">أحدث الصور</h3>
+          <h3 className="font-display text-xl font-bold text-white">
+            مشاركات المسابقة
+          </h3>
           {loading ? (
             <p className="mt-4 text-sm text-slate-500">بنحمّل المعرض…</p>
           ) : posts.length === 0 ? (

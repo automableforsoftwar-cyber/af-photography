@@ -14,6 +14,7 @@ import {
   voteOnPost,
   type CommunityPost,
 } from "@/lib/community-posts";
+import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
@@ -60,6 +61,7 @@ export function CompetitionPhotoVoting() {
       return;
     }
     setLoading(true);
+    await syncAllCompetitionAnnouncements();
     const data = await fetchCommunityPosts(userId, "votes", activeCourseId);
     setPosts(data);
     setLoading(false);
@@ -85,6 +87,18 @@ export function CompetitionPhotoVoting() {
         setPosts((prev) =>
           prev.map((p) => (p.id === postId ? { ...p, voted: true } : p)),
         );
+        return;
+      }
+      if (result.message === "vote_limit") {
+        setNotice("وصلت للحد الأقصى من الأصوات اللي حددته الإدارة.");
+        return;
+      }
+      if (result.message === "not_started") {
+        setNotice("المسابقة لسه ما بدأتش.");
+        return;
+      }
+      if (result.message === "ended") {
+        setNotice("المسابقة خلصت — التصويت مقفول.");
         return;
       }
       setNotice("مقدرناش نسجّل الصوت. حاول تاني.");

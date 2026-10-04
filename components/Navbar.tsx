@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
@@ -10,7 +10,6 @@ import { navLinks, site } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
-import Link from "next/link";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -86,14 +85,14 @@ export function Navbar() {
               {isStaff ? (
                 <Link
                   href="/dashboard/admin"
-                  className="rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:px-4 sm:text-sm"
+                  className="hidden rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:inline-flex sm:px-4 sm:text-sm"
                 >
                   الإدارة
                 </Link>
               ) : null}
               <a
                 href="#curriculum"
-                className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
+                className="hidden rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:inline-flex sm:px-5 sm:text-sm"
               >
                 الكورسات
               </a>
@@ -103,7 +102,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setAuthOpen(true)}
-              className="rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:px-5 sm:text-sm"
+              className="hidden rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:inline-flex sm:px-5 sm:text-sm"
             >
               تسجيل دخول / إنشاء حساب
             </button>
@@ -131,84 +130,85 @@ export function Navbar() {
         </div>
       </nav>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            id="mobile-menu"
-            className="fixed inset-0 z-40 flex flex-col justify-center bg-[#050505]/90 px-8 backdrop-blur-2xl lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <ul className="flex flex-col gap-7">
-              {navLinks.map((link, index) => (
-                <motion.li
-                  key={link.href}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08 * index, duration: 0.45 }}
+      {/* Mobile drawer */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+      >
+        <button
+          type="button"
+          aria-label="إغلاق القائمة"
+          className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setOpen(false)}
+        />
+        <aside
+          id="mobile-menu"
+          className={`fixed inset-y-0 left-0 w-64 transform bg-black transition-transform duration-300 ${
+            open ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="border-b border-white/10 px-5 py-5">
+            <p className="font-display text-lg font-bold text-yellow-400">
+              {site.name}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{site.project}</p>
+          </div>
+          <ul className="flex flex-col gap-1 p-3">
+            {navLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="block rounded-xl px-3 py-3 text-sm font-medium text-white transition hover:bg-white/5 hover:text-yellow-400"
+                  onClick={() => setOpen(false)}
                 >
-                  <a
-                    href={link.href}
-                    className="font-display text-4xl font-bold leading-snug text-white"
-                    onClick={() => setOpen(false)}
-                  >
-                    {link.label}
-                  </a>
-                </motion.li>
-              ))}
-              <motion.li
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 * navLinks.length, duration: 0.45 }}
-              >
-                {isLoggedIn ? (
-                  <>
-                    {isStaff ? (
-                      <Link
-                        href="/dashboard/admin"
-                        className="font-display text-3xl font-bold text-yellow-400"
-                        onClick={() => setOpen(false)}
-                      >
-                        الإدارة
-                      </Link>
-                    ) : null}
-                    <a
-                      href="#curriculum"
-                      className="font-display text-3xl font-bold text-yellow-400"
+                  {link.label}
+                </a>
+              </li>
+            ))}
+            {isLoggedIn ? (
+              <>
+                {isStaff ? (
+                  <li>
+                    <Link
+                      href="/dashboard/admin"
+                      className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 transition hover:bg-yellow-400/10"
                       onClick={() => setOpen(false)}
                     >
-                      الكورسات
-                    </a>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="font-display text-start text-3xl font-bold text-yellow-400"
-                    onClick={() => {
-                      setOpen(false);
-                      setAuthOpen(true);
-                    }}
+                      الإدارة
+                    </Link>
+                  </li>
+                ) : null}
+                <li>
+                  <a
+                    href="#curriculum"
+                    className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 transition hover:bg-yellow-400/10"
+                    onClick={() => setOpen(false)}
                   >
-                    تسجيل دخول / إنشاء حساب
-                  </button>
-                )}
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.08 * (navLinks.length + 1),
-                  duration: 0.45,
-                }}
-              >
-                <SocialIconLinks />
-              </motion.li>
-            </ul>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+                    الكورسات
+                  </a>
+                </li>
+              </>
+            ) : (
+              <li>
+                <button
+                  type="button"
+                  className="block w-full rounded-xl px-3 py-3 text-right text-sm font-medium text-yellow-400 transition hover:bg-yellow-400/10"
+                  onClick={() => {
+                    setOpen(false);
+                    setAuthOpen(true);
+                  }}
+                >
+                  تسجيل دخول / إنشاء حساب
+                </button>
+              </li>
+            )}
+          </ul>
+          <div className="mt-auto border-t border-white/10 p-4">
+            <SocialIconLinks />
+          </div>
+        </aside>
+      </div>
 
       <EnrollmentModal
         open={authOpen}

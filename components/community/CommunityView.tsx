@@ -127,14 +127,24 @@ export function CommunityView({
   useEffect(() => {
     // Always land on the newest message (bottom) after load / tab change
     if (loading || tab === "inbox" || showAssistant) return;
-    const id = window.setTimeout(() => {
-      chatScrollRef.current?.scrollToBottom("auto");
-      // Second pass after images/layout settle (esp. mobile)
-      window.setTimeout(() => {
-        chatScrollRef.current?.scrollToBottom("auto");
-      }, 120);
-    }, 30);
-    return () => window.clearTimeout(id);
+    const timers: number[] = [];
+    const bump = (delay: number, behavior: ScrollBehavior = "auto") => {
+      timers.push(
+        window.setTimeout(() => {
+          chatScrollRef.current?.scrollToBottom(behavior);
+          messagesEndRef.current?.scrollIntoView({
+            block: "end",
+            behavior,
+          });
+        }, delay),
+      );
+    };
+    bump(16);
+    bump(80);
+    bump(220);
+    return () => {
+      for (const id of timers) window.clearTimeout(id);
+    };
   }, [messages, tab, loading, showAssistant]);
 
   useEffect(() => {
@@ -618,7 +628,10 @@ export function CommunityView({
               </div>
             </header>
 
-            <RtlScroll ref={chatScrollRef} className="min-h-0 flex-1">
+            <RtlScroll
+              ref={chatScrollRef}
+              className="min-h-0 flex-1 overscroll-contain pb-[env(safe-area-inset-bottom)]"
+            >
               {loading ? (
                 <p className="px-5 py-8 text-right text-sm text-slate-500">
                   بنحمّل الرسائل…
@@ -635,7 +648,7 @@ export function CommunityView({
                   variants={list}
                   initial="hidden"
                   animate="show"
-                  className="space-y-1 px-2 py-3"
+                  className="flex min-h-full flex-col justify-end space-y-1 px-2 py-3"
                   dir="rtl"
                 >
                   <AnimatePresence mode="popLayout">
@@ -901,7 +914,7 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="shrink-0 border-t border-white/10 p-4 text-right"
+              className="sticky bottom-0 z-20 shrink-0 border-t border-white/10 bg-[#050505]/95 p-3 text-right backdrop-blur-md sm:p-4 lg:static lg:bg-transparent lg:backdrop-blur-none"
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();

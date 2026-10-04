@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { CommunityView } from "@/components/community/CommunityView";
+import { CompetitionAdminPanel } from "@/components/dashboard/CompetitionAdminPanel";
 import { DashboardGallery } from "@/components/dashboard/DashboardGallery";
 import { useAuthStore } from "@/lib/auth-store";
 import { modules } from "@/lib/content";
@@ -29,6 +30,7 @@ type AdminTab =
   | "members"
   | "analytics"
   | "community"
+  | "competitions"
   | "gallery";
 
 type AdminDashboardProps = {
@@ -248,6 +250,7 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
     { id: "members", label: "إدارة الأعضاء" },
     { id: "analytics", label: "تحليلات الأداء", instructorOnly: true },
     { id: "community", label: "المجتمع" },
+    { id: "competitions", label: "المسابقات" },
     { id: "gallery", label: "معرض الفائزين" },
   ];
 
@@ -338,7 +341,9 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
         </p>
       ) : null}
 
-      {tab === "gallery" ? (
+      {tab === "competitions" ? (
+        <CompetitionAdminPanel courseId={courseId} />
+      ) : tab === "gallery" ? (
         <div className="space-y-8">
           <DashboardGallery key={galleryKey} manageMode />
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
