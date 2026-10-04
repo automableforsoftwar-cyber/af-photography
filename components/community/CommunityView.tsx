@@ -37,7 +37,7 @@ import {
 } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
-import { pickDisplayName } from "@/lib/display-name";
+import { getInitials, pickDisplayName } from "@/lib/display-name";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -529,8 +529,11 @@ export function CommunityView({
                           : "text-slate-300 hover:bg-white/5 hover:text-white"
                       }`}
                     >
-                      <span className="relative flex size-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.6rem] text-yellow-400">
-                        {c.peerName.slice(0, 2)}
+                      <span
+                        className="relative flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold text-black"
+                        style={{ backgroundColor: "#FFD700" }}
+                      >
+                        {getInitials(c.peerName)}
                         {unread ? (
                           <span className="absolute -start-0.5 -top-0.5 size-2 rounded-full bg-red-500 ring-2 ring-[#050505]" />
                         ) : null}
@@ -583,15 +586,19 @@ export function CommunityView({
 
             <div className="premium-scroll flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain bg-black lg:bg-[#050505]">
               {loading ? (
-                <p className="px-5 py-8 text-right text-sm text-slate-500">
-                  بنحمّل الرسائل…
-                </p>
+                <div className="flex min-h-full flex-1 items-center justify-center px-5 py-12 text-gray-400">
+                  <p className="text-center text-sm font-medium">
+                    جاري تحميل الرسائل...
+                  </p>
+                </div>
               ) : messages.length === 0 ? (
-                <p className="px-5 py-8 text-right text-sm text-slate-500">
-                  {isAnnouncements
-                    ? "لسه مفيش إعلانات — الإدارة هتنشر هنا لما يبقى فيه تحديث."
-                    : "لسه مفيش رسائل — ابدأ النقاش أو ارفع صورة من جهازك."}
-                </p>
+                <div className="flex min-h-full flex-1 items-center justify-center px-5 py-12 text-gray-400">
+                  <p className="text-center text-sm">
+                    {isAnnouncements
+                      ? "لسه مفيش إعلانات — الإدارة هتنشر هنا لما يبقى فيه تحديث."
+                      : "لسه مفيش رسائل — ابدأ النقاش أو ارفع صورة من جهازك."}
+                  </p>
+                </div>
               ) : (
                 <div
                   key={`${courseId}-${channelId}`}
@@ -602,6 +609,7 @@ export function CommunityView({
                       const mine = message.user_id === userId;
                       const label =
                         message.author_label || (mine ? "إنت" : "عضو");
+                      const initials = getInitials(label, mine ? "أن" : "عض");
                       const reactionEntries = Object.entries(
                         message.reactions ?? {},
                       ).filter(([, users]) => users.length > 0);
@@ -646,13 +654,16 @@ export function CommunityView({
                               }}
                               disabled={mine}
                               title={mine ? undefined : `رسالة إلى ${label}`}
-                              className={`relative flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[0.65rem] font-medium text-yellow-400 ${
+                              className={`relative flex size-9 items-center justify-center rounded-full text-[0.7rem] font-bold leading-none text-black ${
                                 mine
                                   ? "cursor-default"
-                                  : "cursor-pointer transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
+                                  : "cursor-pointer hover:brightness-110"
                               }`}
+                              style={{ backgroundColor: "#FFD700" }}
                             >
-                              {label.slice(0, 2)}
+                              <span className="flex items-center justify-center text-center">
+                                {initials}
+                              </span>
                               {!mine && hasUnread ? (
                                 <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
                               ) : null}

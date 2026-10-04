@@ -119,10 +119,13 @@ export function Navbar() {
                 )}
               </ul>
               <div
-                className="border-t border-white/10 p-4"
+                className="flex flex-col gap-3 border-t border-white/10 p-4"
                 style={{ backgroundColor: "#0a0a0a" }}
               >
                 <SocialIconLinks />
+                {isLoggedIn ? (
+                  <AuthButton appearance="plain" intent="logout" />
+                ) : null}
               </div>
             </aside>
           </div>,
@@ -140,16 +143,19 @@ export function Navbar() {
       style={scrolled || open ? { backgroundColor: "#0a0a0a" } : undefined}
     >
       <nav
-        className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10"
+        dir="rtl"
+        className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-5 sm:px-8 lg:px-10"
         aria-label="رئيسي"
       >
-        <a href="#main" className="group flex items-center gap-3">
+        {/* Brand — top-right in RTL */}
+        <a href="#main" className="group flex min-w-0 shrink-0 items-center gap-3">
           <Image
             src="/images/af-mark.svg"
-            alt=""
+            alt={site.name}
             width={36}
             height={36}
             className="rounded-lg"
+            priority
           />
           <span className="leading-tight text-start">
             <span className="block font-display text-base font-bold text-yellow-400 sm:text-lg">
@@ -174,7 +180,8 @@ export function Navbar() {
           ))}
         </ul>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Actions — far end (left in RTL); logout never in the brand slot */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
             <>
@@ -192,7 +199,9 @@ export function Navbar() {
               >
                 الكورسات
               </a>
-              <AuthButton appearance="plain" intent="logout" />
+              <span className="hidden sm:inline-flex">
+                <AuthButton appearance="plain" intent="logout" />
+              </span>
             </>
           ) : (
             <button

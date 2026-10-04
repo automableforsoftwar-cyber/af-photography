@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -153,10 +154,11 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 })}
               </ul>
               <div
-                className="border-t border-white/10 p-4"
+                className="flex flex-col gap-2 border-t border-white/10 p-4"
                 style={{ backgroundColor: "#0a0a0a" }}
               >
                 <AuthButton appearance="plain" intent="exit-home" />
+                <AuthButton appearance="plain" intent="logout" />
               </div>
             </aside>
           </div>,
@@ -167,47 +169,80 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   return (
     <AuthGate>
       <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#050505]">
-        {/* Desktop top nav */}
+        {/* Desktop top nav — brand on the right (RTL start), logout at the far end */}
         <nav
           aria-label="إجراءات اللوحة"
           className="pointer-events-none fixed inset-x-0 top-4 z-50 hidden justify-center px-3 lg:flex"
         >
-          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-full border border-white/10 bg-[#0a0a0a] px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3">
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`text-sm font-medium ${
-                    active
-                      ? "text-yellow-400"
-                      : "text-slate-500 hover:text-slate-200"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-            <AuthButton appearance="plain" intent="exit-home" />
+          <div
+            dir="rtl"
+            className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-[#0a0a0a] px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3"
+          >
+            <Link
+              href="/dashboard"
+              className="flex shrink-0 items-center gap-2 border-e border-white/10 pe-4"
+            >
+              <Image
+                src="/images/af-mark.svg"
+                alt=""
+                width={28}
+                height={28}
+                className="rounded-md"
+              />
+              <span className="font-display text-sm font-bold text-yellow-400">
+                {site.name}
+              </span>
+            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-5">
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`text-sm font-medium ${
+                      active
+                        ? "text-yellow-400"
+                        : "text-slate-500 hover:text-slate-200"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="flex shrink-0 items-center gap-3 border-s border-white/10 ps-4">
+              <AuthButton appearance="plain" intent="exit-home" />
+              <AuthButton appearance="plain" intent="logout" />
+            </div>
           </div>
         </nav>
 
-        {/* Mobile top bar — solid opaque */}
+        {/* Mobile top bar — logo/name only on the right; menu toggle on the left */}
         <div
+          dir="rtl"
           className="fixed inset-x-0 top-0 z-[60] flex items-center justify-between border-b border-white/10 px-4 py-3 lg:hidden"
           style={{ backgroundColor: "#0a0a0a" }}
         >
-          <p className="font-display text-sm font-bold text-yellow-400">
-            {site.name}
-          </p>
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <Image
+              src="/images/af-mark.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="shrink-0 rounded-md"
+            />
+            <p className="font-display truncate text-sm font-bold text-yellow-400">
+              {site.name}
+            </p>
+          </Link>
           <button
             type="button"
             aria-expanded={mobileNavOpen}
             aria-controls="dashboard-mobile-menu"
             aria-label={mobileNavOpen ? "اقفل القائمة" : "افتح القائمة"}
-            className="relative z-[61] flex h-10 w-10 items-center justify-center"
+            className="relative z-[61] flex h-10 w-10 shrink-0 items-center justify-center"
             onClick={() => setMobileNavOpen((v) => !v)}
           >
             <span

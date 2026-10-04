@@ -16,6 +16,7 @@ import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RoleBadge } from "@/components/community/RoleBadge";
+import { getInitials } from "@/lib/display-name";
 
 export type ActiveChatUser = {
   userId: string;
@@ -68,7 +69,7 @@ export function DirectMessageDrawer({
 
   const isSelf = Boolean(myId && peerUserId === myId);
   const canSend = Boolean((draft.trim() || file) && !chatMuted);
-  const initials = peerName.slice(0, 2) || "؟";
+  const initials = getInitials(peerName);
 
   useEffect(() => {
     setMounted(true);
@@ -265,7 +266,10 @@ export function DirectMessageDrawer({
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-yellow-400/40 bg-yellow-400/10 text-sm font-medium text-yellow-400">
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-black"
+              style={{ backgroundColor: "#FFD700" }}
+            >
               {initials}
             </span>
             <div className="min-w-0 text-right">

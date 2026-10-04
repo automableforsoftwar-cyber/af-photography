@@ -123,7 +123,11 @@ function StudentAdminContact({
 
       <RtlScroll className="min-h-0 flex-1 px-4 py-4">
         {loading ? (
-          <p className="text-right text-sm text-slate-500">بنحمّل الرسائل…</p>
+          <div className="flex min-h-[12rem] flex-1 items-center justify-center text-gray-400">
+            <p className="text-center text-sm font-medium">
+              جاري تحميل الرسائل...
+            </p>
+          </div>
         ) : messages.length === 0 ? (
           <p className="text-right text-sm text-slate-500">
             لسه مبعتش حاجة — اكتب أول رسالة للإدارة.
