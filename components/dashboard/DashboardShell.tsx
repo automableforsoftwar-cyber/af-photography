@@ -70,7 +70,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
     if (item.staffOnly && !showAdmin) return false;
     if (item.studentsOnly && showAdmin) return false;
     return true;
-  });
+  }).filter(
+    (item, index, list) =>
+      list.findIndex((entry) => entry.label === item.label) === index,
+  );
 
   // Staff opening Community/Gallery routes → Admin Command Center
   useEffect(() => {
@@ -179,7 +182,8 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
         >
           <div
             dir="rtl"
-            className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-[#0a0a0a] px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3"
+            className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-transparent px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3"
+            style={{ backgroundColor: "transparent", backgroundImage: "none" }}
           >
             <Link
               href="/dashboard"
@@ -218,10 +222,11 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           </div>
         </nav>
 
-        {/* Mobile top bar — transparent; hamburger left + logo right */}
+        {/* Mobile top bar — fully transparent; hamburger left + logo right */}
         <div
           dir="ltr"
           className="absolute top-0 left-0 z-50 flex w-full items-center justify-between bg-transparent px-4 py-3 lg:hidden"
+          style={{ backgroundColor: "transparent", backgroundImage: "none" }}
         >
           <button
             type="button"

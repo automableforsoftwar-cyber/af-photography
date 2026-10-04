@@ -70,30 +70,18 @@ export function Navbar() {
                     </a>
                   </li>
                 ))}
-                {isLoggedIn ? (
-                  <>
-                    {isStaff ? (
-                      <li>
-                        <Link
-                          href="/dashboard/admin"
-                          className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
-                          onClick={() => setOpen(false)}
-                        >
-                          الإدارة
-                        </Link>
-                      </li>
-                    ) : null}
-                    <li>
-                      <a
-                        href="#curriculum"
-                        className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
-                        onClick={() => setOpen(false)}
-                      >
-                        الكورسات
-                      </a>
-                    </li>
-                  </>
-                ) : (
+                {isLoggedIn && isStaff ? (
+                  <li>
+                    <Link
+                      href="/dashboard/admin"
+                      className="block rounded-xl px-3 py-3 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10"
+                      onClick={() => setOpen(false)}
+                    >
+                      الإدارة
+                    </Link>
+                  </li>
+                ) : null}
+                {!isLoggedIn ? (
                   <li>
                     <button
                       type="button"
@@ -106,7 +94,7 @@ export function Navbar() {
                       تسجيل دخول / إنشاء حساب
                     </button>
                   </li>
-                )}
+                ) : null}
               </ul>
               <div
                 className="flex flex-col gap-3 border-t border-white/10 p-4"
@@ -124,7 +112,10 @@ export function Navbar() {
       : null;
 
   return (
-    <header className="absolute top-0 left-0 z-50 w-full bg-transparent">
+    <header
+      className="absolute top-0 left-0 z-50 w-full bg-transparent"
+      style={{ backgroundColor: "transparent", backgroundImage: "none" }}
+    >
       <nav
         dir="ltr"
         className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-5 sm:px-8 lg:px-10"
@@ -168,22 +159,14 @@ export function Navbar() {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
-            <>
-              {isStaff ? (
-                <Link
-                  href="/dashboard/admin"
-                  className="hidden rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:inline-flex sm:px-4 sm:text-sm"
-                >
-                  الإدارة
-                </Link>
-              ) : null}
-              <a
-                href="#curriculum"
-                className="hidden rounded-full border border-yellow-400/50 bg-yellow-400 px-3.5 py-2 text-xs font-semibold text-[#050505] shadow-[0_0_28px_rgba(251,191,36,0.35)] transition hover:bg-yellow-300 sm:inline-flex sm:px-5 sm:text-sm"
+            isStaff ? (
+              <Link
+                href="/dashboard/admin"
+                className="hidden rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:inline-flex sm:px-4 sm:text-sm"
               >
-                الكورسات
-              </a>
-            </>
+                الإدارة
+              </Link>
+            ) : null
           ) : (
             <button
               type="button"
