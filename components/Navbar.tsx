@@ -124,7 +124,7 @@ export function Navbar() {
       : null;
 
   return (
-    <header className="absolute top-0 z-50 w-full bg-transparent">
+    <header className="absolute top-0 left-0 z-50 w-full bg-transparent">
       <nav
         dir="ltr"
         className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-5 sm:px-8 lg:px-10"

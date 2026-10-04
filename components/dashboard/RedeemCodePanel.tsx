@@ -82,23 +82,13 @@ export function RedeemCodePanel({
           : "كل كود مربوط بكورس واحد (target_course). التفعيل بيفتح الكورس ده بس على حسابك — وتقدر تضيف كورسات تانية بكودات منفصلة لاحقاً."}
       </p>
 
-      {unlockedCourseIds.length > 0 ? (
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {unlockedCourseIds.map((id) => {
-            const course = modules.find((m) => m.id === id);
-            return (
-              <li
-                key={id}
-                className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-400"
-              >
-                {course?.title ?? id}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
+      {unlockedCourseIds.length === 0 ? (
         <p className="mt-4 text-sm text-slate-500">
           لسه مفيش كورسات مفتوحة على الحساب.
+        </p>
+      ) : (
+        <p className="mt-4 text-sm text-slate-500">
+          كورسات مفتوحة: {[...new Set(unlockedCourseIds)].length}
         </p>
       )}
 

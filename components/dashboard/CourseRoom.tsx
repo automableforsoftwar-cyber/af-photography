@@ -27,7 +27,7 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
 
   if (!known) {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-16 text-center">
+      <div className="mx-auto flex w-full max-w-full flex-1 flex-col justify-center overflow-x-hidden px-4 pb-32 pt-24 text-center">
         <p className="text-sm text-slate-400">الكورس ده مش موجود.</p>
         <Link
           href="/"
@@ -42,7 +42,7 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
   const name = pickDisplayName(fullName, email);
 
   return (
-    <div className="premium-scroll mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center overflow-y-auto py-8">
+    <div className="premium-scroll mx-auto flex w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-32 pt-24 sm:max-w-3xl sm:px-6">
       <p className="text-sm font-medium text-yellow-400">أهلاً بيك</p>
       <h1 className="font-display mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
         مرحباً، {name}
@@ -82,7 +82,7 @@ export function CourseRoom({ courseId }: CourseRoomProps) {
 
       <Link
         href="/dashboard/community"
-        className="mt-12 inline-flex w-fit items-center justify-center rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold text-[#050505] transition hover:bg-yellow-300"
+        className="mt-12 inline-flex w-full max-w-xs items-center justify-center self-start rounded-full bg-yellow-400 px-6 py-3 text-center text-sm font-semibold text-[#050505] transition hover:bg-yellow-300 sm:w-fit"
       >
         ابدأ التعلم
       </Link>

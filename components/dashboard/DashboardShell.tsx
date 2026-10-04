@@ -218,11 +218,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           </div>
         </nav>
 
-        {/* Mobile top bar — ONLY hamburger (left) + logo (right) */}
+        {/* Mobile top bar — transparent; hamburger left + logo right */}
         <div
           dir="ltr"
-          className="fixed inset-x-0 top-0 z-[60] flex items-center justify-between border-b border-white/10 px-4 py-3 lg:hidden"
-          style={{ backgroundColor: "#0a0a0a" }}
+          className="absolute top-0 left-0 z-50 flex w-full items-center justify-between bg-transparent px-4 py-3 lg:hidden"
         >
           <button
             type="button"
@@ -264,7 +263,9 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           className={
             isCommunity
               ? "flex min-h-0 flex-1 flex-col overflow-hidden pt-14 lg:pt-20"
-              : "flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-6 pt-14 sm:px-6 lg:px-8 lg:pt-20"
+              : section === "course"
+                ? "flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pb-0 pt-0 sm:px-6 lg:px-8 lg:pt-20"
+                : "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-6 pt-14 sm:px-6 lg:px-8 lg:pt-20"
           }
         >
           {section === "home" ? (

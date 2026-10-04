@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { RedeemCodePanel } from "@/components/dashboard/RedeemCodePanel";
 import { modules, getModuleById } from "@/lib/content";
 import { useAuthStore } from "@/lib/auth-store";
@@ -16,9 +17,19 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
   const setActiveCourseId = useAuthStore((s) => s.setActiveCourseId);
   const { isStaff } = useLiveStaffRole();
 
+  // Single unique list — never render the same course id twice
+  const uniqueCourses = useMemo(() => {
+    const seen = new Set<string>();
+    return modules.filter((course) => {
+      if (seen.has(course.id)) return false;
+      seen.add(course.id);
+      return true;
+    });
+  }, []);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto pb-8">
-      <div className="mx-auto w-full max-w-3xl">
+    <div className="flex min-h-0 w-full max-w-full flex-1 flex-col gap-8 overflow-x-hidden overflow-y-auto pb-8">
+      <div className="mx-auto w-full max-w-3xl px-1">
         <p className="text-xs font-medium text-yellow-400">الكورسات</p>
         <h2 className="font-display mt-2 text-3xl font-bold text-white sm:text-4xl">
           مساراتك
@@ -31,16 +42,17 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
       </div>
 
       {!isStaff ? (
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-3xl px-1">
           <RedeemCodePanel onUnlocked={onUnlocked} />
         </div>
       ) : null}
 
-      <ul className="mx-auto grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        {modules.map((course) => {
+      {/* One responsive grid only — 1 col mobile, 2 cols desktop (no dual layouts) */}
+      <ul className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 px-1 md:grid-cols-2">
+        {uniqueCourses.map((course) => {
           const unlocked = isStaff || unlockedCourseIds.includes(course.id);
           return (
-            <li key={course.id}>
+            <li key={`course-card-${course.id}`}>
               <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-display text-xl font-bold text-white">
@@ -83,13 +95,15 @@ export function CoursesHub({ onUnlocked }: CoursesHubProps) {
       </ul>
 
       {isStaff ? (
-        <p className="mx-auto max-w-3xl text-center text-xs text-yellow-400/80">
+        <p className="mx-auto max-w-3xl px-1 text-center text-xs text-yellow-400/80">
           مفتاح الإدارة نشط — وصول كامل لكل المسارات بدون اشتراك.
         </p>
       ) : unlockedCourseIds.length > 0 ? (
-        <p className="mx-auto max-w-3xl text-center text-xs text-slate-500">
+        <p className="mx-auto max-w-3xl px-1 text-center text-xs text-slate-500">
           مفتوح عندك:{" "}
-          {unlockedCourseIds.map((id) => getModuleById(id).title).join(" · ")}
+          {[...new Set(unlockedCourseIds)]
+            .map((id) => getModuleById(id).title)
+            .join(" · ")}
         </p>
       ) : null}
     </div>
