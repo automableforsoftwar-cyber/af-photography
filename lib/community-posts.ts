@@ -1,6 +1,7 @@
 import {
   competitionPhase,
   countUserVotesInCompetition,
+  fetchActiveCompetitionForCourse,
   fetchActiveCompetitions,
   fetchLatestCompetition,
   fetchLatestCompetitionById,
@@ -254,12 +255,20 @@ export async function uploadCommunityPost(input: {
 
   const title = (input.title?.trim() || description.slice(0, 80)).trim();
 
+  // Competition uploads require an explicitly active window set by Admin.
   let competitionId: string | null = null;
   if (input.courseId) {
-    const latest = await fetchLatestCompetition(input.courseId);
-    if (latest && competitionPhase(latest) === "active") {
-      competitionId = latest.id;
+    const active = await fetchActiveCompetitionForCourse(input.courseId);
+    if (!active) {
+      return { ok: false, message: "no_active_competition" };
     }
+    competitionId = active.id;
+  } else {
+    const activeList = await fetchActiveCompetitions();
+    if (activeList.length === 0) {
+      return { ok: false, message: "no_active_competition" };
+    }
+    competitionId = activeList[0]!.id;
   }
 
   const { data, error } = await supabase

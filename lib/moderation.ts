@@ -172,6 +172,32 @@ export async function setUserBlocked(
   return { ok: true };
 }
 
+/** Students report a peer; staff review via RLS select policy. */
+export async function reportUser(
+  reportedUserId: string,
+  reason?: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "login_required" };
+  if (!reportedUserId || reportedUserId === user.id) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { error } = await supabase.from("user_reports").insert({
+    reporter_id: user.id,
+    reported_user_id: reportedUserId,
+    reason: reason?.trim() || "إبلاغ من رسالة خاصة",
+  });
+
+  if (error) {
+    console.error("reportUser:", error);
+    return { ok: false, message: "report_failed" };
+  }
+  return { ok: true };
+}
+
 export async function setUserChatBlocked(
   userId: string,
   chatBlocked: boolean,

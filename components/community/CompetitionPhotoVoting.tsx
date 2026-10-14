@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Course competition — device file upload, name + description, one vote per user.
+ * Course competition — device file upload only while Admin competition is active.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,7 +13,12 @@ import {
   voteOnPost,
   type CommunityPost,
 } from "@/lib/community-posts";
-import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
+import {
+  fetchActiveCompetitionForCourse,
+  fetchActiveCompetitions,
+  syncAllCompetitionAnnouncements,
+  type Competition,
+} from "@/lib/competitions";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
@@ -24,6 +29,8 @@ export function CompetitionPhotoVoting() {
   const email = useAuthStore((s) => s.email);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [activeCompetition, setActiveCompetition] =
+    useState<Competition | null>(null);
   const [loading, setLoading] = useState(true);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -33,16 +40,29 @@ export function CompetitionPhotoVoting() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const displayName = pickDisplayName(fullName, email);
+  const competitionActive = Boolean(activeCompetition);
 
   const load = useCallback(async () => {
-    if (!activeCourseId) {
+    setLoading(true);
+    await syncAllCompetitionAnnouncements();
+
+    let active: Competition | null = null;
+    if (activeCourseId) {
+      active = await fetchActiveCompetitionForCourse(activeCourseId);
+    }
+    if (!active) {
+      const globals = await fetchActiveCompetitions();
+      active = globals[0] ?? null;
+    }
+    setActiveCompetition(active);
+
+    const courseId = activeCourseId ?? active?.course_id ?? null;
+    if (!courseId) {
       setPosts([]);
       setLoading(false);
       return;
     }
-    setLoading(true);
-    await syncAllCompetitionAnnouncements();
-    const data = await fetchCommunityPosts(userId, "votes", activeCourseId);
+    const data = await fetchCommunityPosts(userId, "votes", courseId);
     setPosts(data);
     setLoading(false);
   }, [userId, activeCourseId]);
@@ -94,7 +114,12 @@ export function CompetitionPhotoVoting() {
   };
 
   const onUpload = async () => {
-    if (!activeCourseId) {
+    if (!competitionActive || !activeCompetition) {
+      setNotice("لا توجد مسابقة نشطة حالياً");
+      return;
+    }
+    const courseId = activeCourseId ?? activeCompetition.course_id;
+    if (!courseId) {
       setNotice("لازم تفتح كورس مفعّل الأول.");
       return;
     }
@@ -114,11 +139,15 @@ export function CompetitionPhotoVoting() {
       description,
       userName: displayName,
       imageUrl: up.publicUrl,
-      courseId: activeCourseId,
+      courseId,
     });
     setUploadBusy(false);
     if (!result.ok) {
-      setNotice("مقدرناش ننشر الصورة. حاول تاني.");
+      setNotice(
+        result.message === "no_active_competition"
+          ? "لا توجد مسابقة نشطة حالياً"
+          : "مقدرناش ننشر الصورة. حاول تاني.",
+      );
       return;
     }
     setDescription("");
@@ -138,37 +167,57 @@ export function CompetitionPhotoVoting() {
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             شارك فريمك… أو صوّت للأحسن
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
-            ارفع من جهازك مع وصف الصورة. هتنشر باسمك ({displayName}). صوت واحد
-            لكل صورة لكل مستخدم.
-          </p>
+          {competitionActive && activeCompetition ? (
+            <p className="mt-2 text-sm text-slate-400">
+              المسابقة النشطة: {activeCompetition.title}. ارفع من جهازك مع وصف
+              الصورة. هتنشر باسمك ({displayName}). صوت واحد لكل صورة لكل مستخدم.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-slate-400">
+              الرفع متاح فقط أثناء نافذة المسابقة اللي بتحددها الإدارة.
+            </p>
+          )}
 
-          <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="وصف الصورة"
-              required
-              rows={2}
-              className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
-            />
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
-              <span>{file ? file.name : "اختر صورة من جهازك"}</span>
-              <span className="text-xs text-yellow-400">Browse</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          {competitionActive ? (
+            <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="وصف الصورة"
+                required
+                rows={2}
+                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
               />
-            </label>
-            <PremiumButton
-              disabled={uploadBusy || !file || !description.trim()}
-              onClick={() => void onUpload()}
+              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
+                <span>{file ? file.name : "اختر صورة من جهازك"}</span>
+                <span className="text-xs text-yellow-400">Browse</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <PremiumButton
+                disabled={uploadBusy || !file || !description.trim()}
+                onClick={() => void onUpload()}
+              >
+                {uploadBusy ? "جاري الرفع…" : "انشر"}
+              </PremiumButton>
+            </div>
+          ) : (
+            <div
+              className="mt-5 rounded-2xl border border-white/10 bg-black/40 px-5 py-8 text-center"
+              role="status"
             >
-              {uploadBusy ? "جاري الرفع…" : "انشر"}
-            </PremiumButton>
-          </div>
+              <p className="text-base font-medium text-white">
+                لا توجد مسابقة نشطة حالياً
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                فور ما الإدارة تفتح مسابقة، هتقدر ترفع صورتك من هنا.
+              </p>
+            </div>
+          )}
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
           ) : null}
@@ -210,7 +259,11 @@ export function CompetitionPhotoVoting() {
                     </div>
                     <button
                       type="button"
-                      disabled={Boolean(entry.voted) || busyId === entry.id}
+                      disabled={
+                        Boolean(entry.voted) ||
+                        busyId === entry.id ||
+                        !competitionActive
+                      }
                       onClick={() => void onVote(entry.id)}
                       className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium ${
                         entry.voted
@@ -218,7 +271,9 @@ export function CompetitionPhotoVoting() {
                           : "border-white/15 text-slate-200 hover:border-yellow-400/50 hover:text-yellow-400"
                       }`}
                     >
-                      {entry.voted ? `تم · ${entry.vote_count}` : `▲ ${entry.vote_count}`}
+                      {entry.voted
+                        ? `تم · ${entry.vote_count}`
+                        : `▲ ${entry.vote_count}`}
                     </button>
                   </div>
                 </article>

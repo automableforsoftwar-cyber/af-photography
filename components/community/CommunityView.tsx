@@ -456,11 +456,18 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10 lg:bg-[#050505]"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
+      style={{ backgroundColor: "#000000" }}
     >
       {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
-      <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto lg:bg-[#050505]">
-        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black px-3 py-3 sm:px-4 sm:py-4 lg:bg-transparent">
+      <aside
+        className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto"
+        style={{ backgroundColor: "#000000" }}
+      >
+        <div
+          className="flex items-center justify-between gap-2 border-b border-white/10 bg-black px-3 py-3 sm:px-4 sm:py-4"
+          style={{ backgroundColor: "#000000" }}
+        >
           <p className="text-sm font-medium text-white">المجتمع</p>
           {(role === "organizer" || role === "instructor") && (
             <span
@@ -550,12 +557,18 @@ export function CommunityView({
         </div>
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black lg:bg-[#050505]">
+      <section
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black"
+        style={{ backgroundColor: "#000000" }}
+      >
         {tab === "inbox" ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
-            <header className="shrink-0 border-b border-white/10 bg-black px-3 py-3 text-right sm:px-5 sm:py-4 lg:bg-[#050505]">
+            <header
+              className="shrink-0 border-b border-white/10 bg-black px-3 py-3 text-right sm:px-5 sm:py-4"
+              style={{ backgroundColor: "#000000" }}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h1 className="font-display text-sm font-bold text-white sm:text-base">
@@ -588,7 +601,8 @@ export function CommunityView({
 
             <div
               key={`${courseId}-${channelId}`}
-              className="flex flex-1 flex-col-reverse gap-1 overflow-y-auto bg-black px-2 py-3 lg:bg-[#050505]"
+              className="flex flex-1 flex-col-reverse gap-1 overflow-y-auto bg-black px-2 py-3"
+              style={{ backgroundColor: "#000000" }}
             >
               {loading ? (
                 <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">

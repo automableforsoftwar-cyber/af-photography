@@ -41,8 +41,12 @@ export function AuthButton({
         type="button"
         onClick={onClick}
         title={isExit ? "خروج للكورس — الرجوع للرئيسية" : "تسجيل الخروج"}
-        aria-label={isExit ? "خروج للكورس بدون تسجيل خروج" : "خروج من الحساب"}
-        className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-200"
+        aria-label={isExit ? "خروج للكورس بدون تسجيل خروج" : "تسجيل الخروج"}
+        className={
+          isExit
+            ? "text-sm font-medium text-slate-500 transition-colors hover:text-slate-200"
+            : "rounded-full border border-red-400/35 bg-red-500/10 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:border-red-400/55 hover:bg-red-500/15 hover:text-red-200"
+        }
       >
         {isExit ? "خروج" : "تسجيل الخروج"}
       </button>

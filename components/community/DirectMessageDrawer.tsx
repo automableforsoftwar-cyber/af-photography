@@ -12,7 +12,11 @@ import {
   subscribePeerThread,
   type PeerDirectMessage,
 } from "@/lib/direct-messages";
-import { fetchProfilesByIds, setUserBlocked } from "@/lib/moderation";
+import {
+  fetchProfilesByIds,
+  reportUser,
+  setUserBlocked,
+} from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RoleBadge } from "@/components/community/RoleBadge";
@@ -30,8 +34,8 @@ type DirectMessageDrawerProps = {
 };
 
 /**
- * True fixed slide-over overlay (viewport-level via portal).
- * Opened ONLY by React state — never by URL / query params.
+ * Viewport-locked slide-over DM panel (portaled to document.body).
+ * Never mounts inside the community scroll container.
  */
 export function DirectMessageDrawer({
   user,
@@ -41,8 +45,9 @@ export function DirectMessageDrawer({
 }: DirectMessageDrawerProps) {
   const myId = useAuthStore((s) => s.userId);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const { isStaff, isChatBlocked } = useLiveStaffRole();
-  const canModerate = isStaff;
+  const { isStaff, isChatBlocked, role } = useLiveStaffRole();
+  const canModerate = isStaff || role === "instructor" || role === "organizer";
+  const isStudent = !canModerate;
   const chatMuted = isBlocked || isChatBlocked;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
@@ -52,9 +57,11 @@ export function DirectMessageDrawer({
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
@@ -62,6 +69,7 @@ export function DirectMessageDrawer({
   const onOpenedPeerRef = useRef(onOpenedPeer);
   const onCloseRef = useRef(onClose);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollLockY = useRef(0);
 
   onOpenedPeerRef.current = onOpenedPeer;
   onCloseRef.current = onClose;
@@ -71,9 +79,10 @@ export function DirectMessageDrawer({
 
   useEffect(() => {
     setMounted(true);
+    const id = window.requestAnimationFrame(() => setEntered(true));
+    return () => window.cancelAnimationFrame(id);
   }, []);
 
-  // Fetch history once per peer open — never tied to parent re-renders.
   useEffect(() => {
     if (!peerUserId) return;
     if (myId && peerUserId === myId) {
@@ -121,14 +130,29 @@ export function DirectMessageDrawer({
   }, [peerUserId, myId, user.name]);
 
   useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    scrollLockY.current = window.scrollY;
+    const { style } = document.body;
+    const prev = {
+      overflow: style.overflow,
+      position: style.position,
+      top: style.top,
+      width: style.width,
+    };
+    style.overflow = "hidden";
+    style.position = "fixed";
+    style.top = `-${scrollLockY.current}px`;
+    style.width = "100%";
+
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = previous;
+      style.overflow = prev.overflow;
+      style.position = prev.position;
+      style.top = prev.top;
+      style.width = prev.width;
+      window.scrollTo(0, scrollLockY.current);
       window.removeEventListener("keydown", onKey);
     };
   }, []);
@@ -137,7 +161,6 @@ export function DirectMessageDrawer({
     messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [messages.length]);
 
-  // Realtime append only
   useEffect(() => {
     if (!incomingMessage) return;
     if (incomingMessage.id === lastIncomingId.current) return;
@@ -166,7 +189,6 @@ export function DirectMessageDrawer({
     }
   }, [incomingMessage, peerUserId]);
 
-  // Direct realtime for this peer thread (works even if parent doesn't forward)
   useEffect(() => {
     if (!myId || !peerUserId || isSelf) return;
     return subscribePeerThread({
@@ -234,8 +256,10 @@ export function DirectMessageDrawer({
   };
 
   const blockPeer = async () => {
-    if (!canModerate || !peerUserId || peerUserId === myId) return;
+    if (!canModerate || !peerUserId || peerUserId === myId || actionBusy) return;
+    setActionBusy(true);
     const result = await setUserBlocked(peerUserId, true);
+    setActionBusy(false);
     if (!result.ok) {
       setNotice("مقدرناش نحظر المستخدم.");
       return;
@@ -243,15 +267,32 @@ export function DirectMessageDrawer({
     setNotice("تم حظر المستخدم.");
   };
 
+  const reportPeer = async () => {
+    if (!isStudent || !peerUserId || peerUserId === myId || actionBusy) return;
+    setActionBusy(true);
+    const result = await reportUser(peerUserId);
+    setActionBusy(false);
+    if (!result.ok) {
+      setNotice("مقدرناش نرسل البلاغ. حاول تاني.");
+      return;
+    }
+    setNotice("تم إرسال البلاغ للإدارة. شكراً.");
+  };
+
   if (!mounted) return null;
 
   return createPortal(
-    <>
-      {/* Backdrop — click to close */}
+    <div
+      className="fixed inset-0 z-[10060] isolate"
+      style={{ height: "100dvh", maxHeight: "100dvh" }}
+      role="presentation"
+    >
       <button
         type="button"
         aria-label="قفل المحادثة"
-        className="fixed inset-0 z-[9998] bg-black/80"
+        className={`absolute inset-0 bg-black/80 transition-opacity duration-200 ${
+          entered ? "opacity-100" : "opacity-0"
+        }`}
         onClick={() => onCloseRef.current()}
       />
 
@@ -260,9 +301,19 @@ export function DirectMessageDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`محادثة مع ${peerName}`}
-        className="fixed inset-y-0 right-0 z-[9999] flex h-[100dvh] w-full max-w-[100vw] flex-col border-l border-yellow-400/15 bg-black text-right shadow-[-24px_0_80px_rgba(0,0,0,0.55)] sm:w-[26rem] lg:w-[28rem]"
+        className={`absolute inset-y-0 right-0 flex w-full max-w-[100vw] flex-col border-l border-yellow-400/15 bg-black text-right shadow-[-24px_0_80px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out sm:w-[26rem] lg:w-[28rem] ${
+          entered ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{
+          height: "100dvh",
+          maxHeight: "100dvh",
+          backgroundColor: "#000000",
+        }}
       >
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4">
+        <header
+          className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4"
+          style={{ backgroundColor: "#000000" }}
+        >
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
               {peerName ? peerName.substring(0, 2).toUpperCase() : "AF"}
@@ -281,10 +332,21 @@ export function DirectMessageDrawer({
             {canModerate && !isSelf ? (
               <button
                 type="button"
+                disabled={actionBusy}
                 onClick={() => void blockPeer()}
-                className="rounded-full border border-red-400/30 px-2.5 py-1 text-[0.7rem] text-red-300 transition hover:bg-red-500/10"
+                className="rounded-full border border-red-400/30 px-2.5 py-1 text-[0.7rem] text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
               >
-                حظر المستخدم
+                حظر
+              </button>
+            ) : null}
+            {isStudent && !isSelf ? (
+              <button
+                type="button"
+                disabled={actionBusy}
+                onClick={() => void reportPeer()}
+                className="rounded-full border border-amber-400/30 px-2.5 py-1 text-[0.7rem] text-amber-200 transition hover:bg-amber-500/10 disabled:opacity-50"
+              >
+                إبلاغ
               </button>
             ) : null}
             <button
@@ -299,12 +361,15 @@ export function DirectMessageDrawer({
         </header>
 
         {isSelf ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
+          <div className="flex flex-1 items-center justify-center bg-black p-6 text-sm text-slate-500">
             مينفعش تبعت رسالة لنفسك.
           </div>
         ) : (
           <>
-            <div className="premium-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black px-4 py-4">
+            <div
+              className="premium-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black px-4 py-4"
+              style={{ backgroundColor: "#000000" }}
+            >
               {loading && messages.length === 0 ? (
                 <p className="text-right text-sm text-slate-500">
                   بنحمّل المحادثة…
@@ -365,7 +430,8 @@ export function DirectMessageDrawer({
 
             <form
               dir="rtl"
-              className="shrink-0 border-t border-white/10 bg-black p-4 text-right"
+              className="shrink-0 border-t border-white/10 bg-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right"
+              style={{ backgroundColor: "#000000" }}
               onSubmit={(e) => {
                 e.preventDefault();
                 void send();
@@ -387,7 +453,7 @@ export function DirectMessageDrawer({
                 </p>
               ) : null}
               <div
-                className={`rounded-2xl border bg-white/5 p-3 ${
+                className={`relative rounded-2xl border bg-[#111] p-3 ${
                   chatMuted
                     ? "border-red-400/25 opacity-60"
                     : "border-white/10 focus-within:border-yellow-400/35"
@@ -448,7 +514,7 @@ export function DirectMessageDrawer({
         src={lightboxSrc}
         onClose={() => setLightboxSrc(null)}
       />
-    </>,
+    </div>,
     document.body,
   );
 }

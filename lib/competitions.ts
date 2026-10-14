@@ -61,6 +61,28 @@ export async function fetchActiveCompetitions(): Promise<Competition[]> {
   return (data ?? []) as Competition[];
 }
 
+/** Active competition for a course (starts_at ≤ now ≤ ends_at), or null. */
+export async function fetchActiveCompetitionForCourse(
+  courseId: string,
+): Promise<Competition | null> {
+  if (!courseId) return null;
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("competitions")
+    .select(SELECT)
+    .eq("course_id", courseId)
+    .lte("starts_at", now)
+    .gte("ends_at", now)
+    .order("starts_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("fetchActiveCompetitionForCourse:", error.message);
+    return null;
+  }
+  return (data as Competition | null) ?? null;
+}
+
 export async function fetchLatestCompetition(
   courseId: string,
 ): Promise<Competition | null> {

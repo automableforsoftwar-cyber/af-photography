@@ -320,6 +320,9 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                   </>
                 )}
               </div>
+              <div className="mt-6 flex justify-center">
+                <AuthButton appearance="plain" intent="logout" />
+              </div>
               {unlockedCourseIds.length > 0 || isStaff ? (
                 <p className="mt-6 text-xs text-slate-500">
                   {isStaff
