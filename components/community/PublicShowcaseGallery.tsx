@@ -14,7 +14,10 @@ import {
   voteOnPost,
   type CommunityPost,
 } from "@/lib/community-posts";
-import { syncAllCompetitionAnnouncements } from "@/lib/competitions";
+import {
+  fetchActiveCompetitions,
+  syncAllCompetitionAnnouncements,
+} from "@/lib/competitions";
 import { useAuthStore } from "@/lib/auth-store";
 import { usePersistHydrated } from "@/lib/use-persist-hydrated";
 
@@ -24,6 +27,7 @@ export function PublicShowcaseGallery() {
   const userId = useAuthStore((s) => s.userId);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasActiveCompetition, setHasActiveCompetition] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -34,7 +38,11 @@ export function PublicShowcaseGallery() {
   const load = useCallback(async () => {
     setLoading(true);
     await syncAllCompetitionAnnouncements();
-    const data = await fetchActiveCompetitionPosts(userId);
+    const active = await fetchActiveCompetitions();
+    setHasActiveCompetition(active.length > 0);
+    const data = active.length
+      ? await fetchActiveCompetitionPosts(userId)
+      : [];
     setPosts(data);
     setLoading(false);
   }, [userId]);
@@ -113,6 +121,9 @@ export function PublicShowcaseGallery() {
             مشاركات المسابقات النشطة ظاهرة هنا للجميع. التصويت للمستخدمين
             المسجّلين فقط — الضيوف هيتحولوا لتسجيل الدخول / إنشاء حساب.
           </p>
+          {!loading && !hasActiveCompetition ? (
+            <p className="text-yellow-500">لا توجد مسابقة نشطة حالياً</p>
+          ) : null}
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90" role="status">
               {notice}

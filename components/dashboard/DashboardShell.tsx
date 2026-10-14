@@ -60,6 +60,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
+  const logout = useAuthStore((s) => s.logout);
   const welcomeName = pickDisplayName(fullName, email);
   const { isStaff, title: staffTitle } = useLiveStaffRole();
   const showAdmin = isStaff;
@@ -320,8 +321,18 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                   </>
                 )}
               </div>
-              <div className="mt-6 flex justify-center">
-                <AuthButton appearance="plain" intent="logout" />
+              <div className="mt-8 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void logout().then(() => {
+                      router.push("/");
+                    });
+                  }}
+                  className="rounded-full border border-red-500 bg-red-600 px-8 py-3 text-base font-bold text-white shadow-lg"
+                >
+                  تسجيل الخروج
+                </button>
               </div>
               {unlockedCourseIds.length > 0 || isStaff ? (
                 <p className="mt-6 text-xs text-slate-500">

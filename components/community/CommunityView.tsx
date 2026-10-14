@@ -10,6 +10,14 @@ import {
   type ActiveChatUser,
 } from "@/components/community/DirectMessageDrawer";
 import { MemberActionMenu } from "@/components/community/MemberActionMenu";
+import {
+  chatBubbleMineClass,
+  chatBubbleOtherClass,
+  chatComposerBoxClass,
+  chatComposerClass,
+  chatScrollClass,
+  chatShellClass,
+} from "@/components/community/chat-chrome";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -456,8 +464,8 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
-      style={{ backgroundColor: "#000000" }}
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0a0a0a] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
+      style={{ backgroundColor: "#0a0a0a" }}
     >
       {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
       <aside
@@ -557,10 +565,7 @@ export function CommunityView({
         </div>
       </aside>
 
-      <section
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black"
-        style={{ backgroundColor: "#000000" }}
-      >
+      <section className={chatShellClass} style={{ backgroundColor: "#0a0a0a" }}>
         {tab === "inbox" ? (
           <AmgadInbox courseId={courseId} />
         ) : (
@@ -601,8 +606,8 @@ export function CommunityView({
 
             <div
               key={`${courseId}-${channelId}`}
-              className="flex flex-1 flex-col-reverse gap-1 overflow-y-auto bg-black px-2 py-3"
-              style={{ backgroundColor: "#000000" }}
+              className={chatScrollClass}
+              style={{ backgroundColor: "#0a0a0a" }}
             >
               {loading ? (
                 <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">
@@ -655,18 +660,16 @@ export function CommunityView({
                       return (
                         <article
                           key={message.id}
-                          className={`group relative flex flex-row gap-3 overflow-visible rounded-xl px-4 py-3 text-right ${
-                            mine ? "bg-yellow-400/5" : "hover:bg-white/5"
+                          className={`group relative flex flex-row gap-3 overflow-visible ${
+                            mine ? chatBubbleMineClass : chatBubbleOtherClass
                           }`}
                         >
                           <div className="relative shrink-0 px-2 py-1">
                             <button
                               type="button"
                               onClick={() => {
-                                if (mine) return;
-                                setMenuFor((id) =>
-                                  id === message.id ? null : message.id,
-                                );
+                                if (mine || !message.user_id) return;
+                                openPeerDm(message.user_id, label);
                               }}
                               disabled={mine}
                               title={mine ? undefined : `رسالة إلى ${label}`}
@@ -698,10 +701,8 @@ export function CommunityView({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (mine) return;
-                                    setMenuFor((id) =>
-                                      id === message.id ? null : message.id,
-                                    );
+                                    if (mine || !message.user_id) return;
+                                    openPeerDm(message.user_id, label);
                                   }}
                                   disabled={mine}
                                   className={`font-medium ${
@@ -877,8 +878,8 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="shrink-0 w-full border-t border-white/10 bg-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right"
-              style={{ backgroundColor: "#000000" }}
+              className={chatComposerClass}
+              style={{ backgroundColor: "#0a0a0a" }}
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();
@@ -918,10 +919,8 @@ export function CommunityView({
               ) : null}
 
               <div
-                className={`relative rounded-2xl border bg-[#111] p-3 ${
-                  chatMuted
-                    ? "border-red-400/25 opacity-60"
-                    : "border-white/10 focus-within:border-yellow-400/35"
+                className={`${chatComposerBoxClass} ${
+                  chatMuted ? "border-red-400/25 opacity-60" : ""
                 }`}
               >
                 <textarea

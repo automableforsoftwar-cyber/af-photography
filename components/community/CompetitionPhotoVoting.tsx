@@ -14,6 +14,7 @@ import {
   type CommunityPost,
 } from "@/lib/community-posts";
 import {
+  competitionPhase,
   fetchActiveCompetitionForCourse,
   fetchActiveCompetitions,
   syncAllCompetitionAnnouncements,
@@ -53,6 +54,9 @@ export function CompetitionPhotoVoting() {
     if (!active) {
       const globals = await fetchActiveCompetitions();
       active = globals[0] ?? null;
+    }
+    if (!active || competitionPhase(active) !== "active") {
+      active = null;
     }
     setActiveCompetition(active);
 
@@ -206,17 +210,7 @@ export function CompetitionPhotoVoting() {
               </PremiumButton>
             </div>
           ) : (
-            <div
-              className="mt-5 rounded-2xl border border-white/10 bg-black/40 px-5 py-8 text-center"
-              role="status"
-            >
-              <p className="text-base font-medium text-white">
-                لا توجد مسابقة نشطة حالياً
-              </p>
-              <p className="mt-2 text-sm text-slate-500">
-                فور ما الإدارة تفتح مسابقة، هتقدر ترفع صورتك من هنا.
-              </p>
-            </div>
+            <p className="text-yellow-500">لا توجد مسابقة نشطة حالياً</p>
           )}
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>

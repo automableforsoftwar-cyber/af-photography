@@ -20,6 +20,13 @@ import {
 import { uploadCommunityImage } from "@/lib/storage";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { RoleBadge } from "@/components/community/RoleBadge";
+import {
+  chatBubbleMineClass,
+  chatBubbleOtherClass,
+  chatComposerBoxClass,
+  chatComposerClass,
+  chatScrollClass,
+} from "@/components/community/chat-chrome";
 
 export type ActiveChatUser = {
   userId: string;
@@ -45,9 +52,9 @@ export function DirectMessageDrawer({
 }: DirectMessageDrawerProps) {
   const myId = useAuthStore((s) => s.userId);
   const isBlocked = useAuthStore((s) => s.isBlocked);
-  const { isStaff, isChatBlocked, role } = useLiveStaffRole();
-  const canModerate = isStaff || role === "instructor" || role === "organizer";
-  const isStudent = !canModerate;
+  const storeRole = useAuthStore((s) => s.role);
+  const { isChatBlocked, role: liveRole, ready: roleReady } = useLiveStaffRole();
+  const role = roleReady ? liveRole : storeRole;
   const chatMuted = isBlocked || isChatBlocked;
   const peerUserId = user.userId;
   const [peerName, setPeerName] = useState(user.name?.trim() || "عضو");
@@ -61,7 +68,6 @@ export function DirectMessageDrawer({
   const [notice, setNotice] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [entered, setEntered] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
@@ -79,8 +85,6 @@ export function DirectMessageDrawer({
 
   useEffect(() => {
     setMounted(true);
-    const id = window.requestAnimationFrame(() => setEntered(true));
-    return () => window.cancelAnimationFrame(id);
   }, []);
 
   useEffect(() => {
@@ -256,7 +260,14 @@ export function DirectMessageDrawer({
   };
 
   const blockPeer = async () => {
-    if (!canModerate || !peerUserId || peerUserId === myId || actionBusy) return;
+    if (
+      (role !== "instructor" && role !== "organizer") ||
+      !peerUserId ||
+      peerUserId === myId ||
+      actionBusy
+    ) {
+      return;
+    }
     setActionBusy(true);
     const result = await setUserBlocked(peerUserId, true);
     setActionBusy(false);
@@ -268,7 +279,9 @@ export function DirectMessageDrawer({
   };
 
   const reportPeer = async () => {
-    if (!isStudent || !peerUserId || peerUserId === myId || actionBusy) return;
+    if (role !== "student" || !peerUserId || peerUserId === myId || actionBusy) {
+      return;
+    }
     setActionBusy(true);
     const result = await reportUser(peerUserId);
     setActionBusy(false);
@@ -282,17 +295,12 @@ export function DirectMessageDrawer({
   if (!mounted) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[10060] isolate"
-      style={{ height: "100dvh", maxHeight: "100dvh" }}
-      role="presentation"
-    >
+    <>
       <button
         type="button"
         aria-label="قفل المحادثة"
-        className={`absolute inset-0 bg-black/80 transition-opacity duration-200 ${
-          entered ? "opacity-100" : "opacity-0"
-        }`}
+        className="fixed inset-0 z-40 bg-black/70"
+        style={{ position: "fixed", inset: 0, zIndex: 40 }}
         onClick={() => onCloseRef.current()}
       />
 
@@ -301,13 +309,17 @@ export function DirectMessageDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`محادثة مع ${peerName}`}
-        className={`absolute inset-y-0 right-0 flex w-full max-w-[100vw] flex-col border-l border-yellow-400/15 bg-black text-right shadow-[-24px_0_80px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out sm:w-[26rem] lg:w-[28rem] ${
-          entered ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="fixed inset-y-0 right-0 z-50 w-full md:w-96 bg-[#0a0a0a] border-l border-gray-800 shadow-2xl flex flex-col"
         style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: "auto",
           height: "100dvh",
           maxHeight: "100dvh",
-          backgroundColor: "#000000",
+          zIndex: 9999,
+          backgroundColor: "#0a0a0a",
         }}
       >
         <header
@@ -329,22 +341,22 @@ export function DirectMessageDrawer({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {canModerate && !isSelf ? (
+            {(role === "instructor" || role === "organizer") && !isSelf ? (
               <button
                 type="button"
                 disabled={actionBusy}
                 onClick={() => void blockPeer()}
-                className="rounded-full border border-red-400/30 px-2.5 py-1 text-[0.7rem] text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                className="rounded-full border border-red-400/40 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-300"
               >
                 حظر
               </button>
             ) : null}
-            {isStudent && !isSelf ? (
+            {role === "student" && !isSelf ? (
               <button
                 type="button"
                 disabled={actionBusy}
                 onClick={() => void reportPeer()}
-                className="rounded-full border border-amber-400/30 px-2.5 py-1 text-[0.7rem] text-amber-200 transition hover:bg-amber-500/10 disabled:opacity-50"
+                className="rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-xs font-semibold text-yellow-300"
               >
                 إبلاغ
               </button>
@@ -366,10 +378,7 @@ export function DirectMessageDrawer({
           </div>
         ) : (
           <>
-            <div
-              className="premium-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black px-4 py-4"
-              style={{ backgroundColor: "#000000" }}
-            >
+            <div className={chatScrollClass} style={{ backgroundColor: "#0a0a0a" }}>
               {loading && messages.length === 0 ? (
                 <p className="text-right text-sm text-slate-500">
                   بنحمّل المحادثة…
@@ -389,11 +398,9 @@ export function DirectMessageDrawer({
                         className={`flex w-full ${mine ? "justify-start" : "justify-end"}`}
                       >
                         <article
-                          className={`max-w-[min(100%,18rem)] rounded-2xl px-4 py-3 text-right ${
-                            mine
-                              ? "border border-yellow-400/25 bg-yellow-400/10"
-                              : "border border-white/10 bg-white/5"
-                          }`}
+                          className={
+                            mine ? chatBubbleMineClass : chatBubbleOtherClass
+                          }
                         >
                           <p className="text-[0.65rem] text-slate-500">
                             {new Date(m.created_at).toLocaleString("ar-EG")}
@@ -430,8 +437,8 @@ export function DirectMessageDrawer({
 
             <form
               dir="rtl"
-              className="shrink-0 border-t border-white/10 bg-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right"
-              style={{ backgroundColor: "#000000" }}
+              className={chatComposerClass}
+              style={{ backgroundColor: "#0a0a0a" }}
               onSubmit={(e) => {
                 e.preventDefault();
                 void send();
@@ -453,10 +460,8 @@ export function DirectMessageDrawer({
                 </p>
               ) : null}
               <div
-                className={`relative rounded-2xl border bg-[#111] p-3 ${
-                  chatMuted
-                    ? "border-red-400/25 opacity-60"
-                    : "border-white/10 focus-within:border-yellow-400/35"
+                className={`${chatComposerBoxClass} ${
+                  chatMuted ? "border-red-400/25 opacity-60" : ""
                 }`}
               >
                 <textarea
@@ -514,7 +519,7 @@ export function DirectMessageDrawer({
         src={lightboxSrc}
         onClose={() => setLightboxSrc(null)}
       />
-    </div>,
+    </>,
     document.body,
   );
 }
