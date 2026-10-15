@@ -12,8 +12,11 @@ import {
 import { MemberActionMenu } from "@/components/community/MemberActionMenu";
 import {
   chatComposerBoxClass,
+  chatForumBodyClass,
+  chatForumHeaderClass,
   chatForumPostClass,
   chatForumPostMineClass,
+  chatMessageListClass,
 } from "@/components/community/chat-chrome";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
@@ -667,7 +670,8 @@ export function CommunityView({
 
             <div
               key={`${courseId}-${channelId}`}
-              className="flex-1 overflow-y-auto flex flex-col-reverse bg-black px-4 py-4"
+              dir="rtl"
+              className="flex flex-1 flex-col-reverse overflow-y-auto bg-black px-4 py-6 text-right"
               style={{ backgroundColor: "#000000" }}
             >
               {loading ? (
@@ -685,7 +689,8 @@ export function CommunityView({
                   </p>
                 </div>
               ) : (
-                reversedMessages.map((message) => {
+                <div className={chatMessageListClass}>
+                  {reversedMessages.map((message) => {
                       const mine = message.user_id === userId;
                       const label =
                         message.author_label || (mine ? "إنت" : "عضو");
@@ -721,11 +726,43 @@ export function CommunityView({
                       return (
                         <article
                           key={message.id}
+                          dir="rtl"
                           className={
                             mine ? chatForumPostMineClass : chatForumPostClass
                           }
                         >
-                          <div className="relative shrink-0 px-2 py-1">
+                          <header className={chatForumHeaderClass}>
+                            <div className="relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (mine || !message.user_id) return;
+                                  openPeerDm(message.user_id, label);
+                                }}
+                                disabled={mine}
+                                title={mine ? undefined : `رسالة إلى ${label}`}
+                                className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black ${
+                                  mine ? "cursor-default" : "cursor-pointer"
+                                }`}
+                              >
+                                {avatarLetters}
+                                {!mine && hasUnread ? (
+                                  <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#111111]" />
+                                ) : null}
+                              </button>
+                              {!mine ? (
+                                <MemberActionMenu
+                                  open={menuOpen}
+                                  onClose={() => setMenuFor(null)}
+                                  memberName={label}
+                                  onMessage={openPeerDmFromMessage}
+                                  canBlock={canModerate}
+                                  onBlock={() =>
+                                    void onBlockUser(message.user_id)
+                                  }
+                                />
+                              ) : null}
+                            </div>
                             <button
                               type="button"
                               onClick={() => {
@@ -733,191 +770,164 @@ export function CommunityView({
                                 openPeerDm(message.user_id, label);
                               }}
                               disabled={mine}
-                              title={mine ? undefined : `رسالة إلى ${label}`}
-                              className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black ${
-                                mine ? "cursor-default" : "cursor-pointer"
+                              className={`font-bold text-sm ${
+                                mine
+                                  ? "cursor-default text-yellow-500"
+                                  : "text-yellow-500 transition hover:text-yellow-400 hover:underline"
                               }`}
                             >
-                              {avatarLetters}
-                              {!mine && hasUnread ? (
-                                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-black" />
-                              ) : null}
+                              {label}
                             </button>
-                            {!mine ? (
-                              <MemberActionMenu
-                                open={menuOpen}
-                                onClose={() => setMenuFor(null)}
-                                memberName={label}
-                                onMessage={openPeerDmFromMessage}
-                                canBlock={canModerate}
-                                onBlock={() =>
-                                  void onBlockUser(message.user_id)
-                                }
-                              />
+                            {authorTitle ? (
+                              <RoleBadge title={authorTitle} />
                             ) : null}
-                          </div>
-                          <div className="min-w-0 w-full flex-1 text-right">
-                            <div className="flex w-full flex-wrap items-center justify-end gap-2">
-                              <p className="text-sm">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (mine || !message.user_id) return;
-                                    openPeerDm(message.user_id, label);
-                                  }}
-                                  disabled={mine}
-                                  className={`font-medium ${
-                                    mine
-                                      ? "cursor-default text-white"
-                                      : "text-white transition hover:text-yellow-400 hover:underline"
-                                  }`}
-                                >
-                                  {label}
-                                </button>
-                                <span className="me-2 text-xs text-slate-500">
-                                  {formatMessageTime(message.created_at)}
-                                </span>
-                              </p>
-                              {authorTitle ? (
-                                <RoleBadge title={authorTitle} />
-                              ) : null}
-                              {canModerate ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void onDeleteMessage(message.id)
-                                  }
-                                  className="rounded-full border border-red-400/20 px-2 py-0.5 text-[0.7rem] text-red-300/90 transition hover:border-red-400/50 hover:bg-red-500/10"
-                                  aria-label="حذف الرسالة"
-                                  title="حذف"
-                                >
-                                  🗑
-                                </button>
-                              ) : null}
-                            </div>
-
-                            {message.reply_to ? (
-                              <div className="mt-2 rounded-lg border-s-2 border-yellow-400/50 bg-white/5 px-3 py-2 text-right">
-                                <p className="text-[0.65rem] font-medium text-yellow-400/90">
-                                  رد على{" "}
-                                  {message.reply_to.author_label || "عضو"}
-                                </p>
-                                {showReplyBody ? (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
-                                    {message.reply_to.body}
-                                  </p>
-                                ) : null}
-                              </div>
-                            ) : null}
-
-                            {showText ? (
-                              <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
-                                {trimmedBody}
-                              </p>
-                            ) : null}
-
-                            {message.image_url ? (
+                            <span className="text-xs text-gray-500">
+                              {formatMessageTime(message.created_at)}
+                            </span>
+                            {canModerate ? (
                               <button
                                 type="button"
                                 onClick={() =>
-                                  setLightboxSrc(message.image_url)
+                                  void onDeleteMessage(message.id)
                                 }
-                                className={`relative ms-auto block w-full overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40 ${
-                                  showText || message.reply_to ? "mt-3" : "mt-1.5"
-                                }`}
+                                className="ms-auto rounded-full border border-red-400/20 px-2 py-0.5 text-[0.7rem] text-red-300/90 transition hover:border-red-400/50 hover:bg-red-500/10"
+                                aria-label="حذف الرسالة"
+                                title="حذف"
                               >
-                                <span className="relative block aspect-[4/3] w-full">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={message.image_url}
-                                    alt=""
-                                    className="h-full w-full rounded-xl object-cover"
-                                    loading="lazy"
-                                  />
-                                </span>
+                                🗑
                               </button>
                             ) : null}
+                          </header>
 
-                            {reactionEntries.length > 0 ? (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {reactionEntries.map(([emoji, users]) => {
-                                  const active =
-                                    !!userId && users.includes(userId);
-                                  return (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      onClick={() =>
-                                        void onReact(message.id, emoji)
-                                      }
-                                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
-                                        active
-                                          ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-400"
-                                          : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
-                                      }`}
-                                    >
-                                      <span>{emoji}</span>
-                                      <span>{users.length}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
+                          {message.reply_to ? (
+                            <div className="mb-3 rounded-lg border-s-2 border-yellow-400/50 bg-black/40 px-3 py-2 text-right">
+                              <p className="text-[0.65rem] font-medium text-yellow-400/90">
+                                رد على{" "}
+                                {message.reply_to.author_label || "عضو"}
+                              </p>
+                              {showReplyBody ? (
+                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
+                                  {message.reply_to.body}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
 
-                            <div className="mt-2 flex flex-wrap items-center gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                          {showText ? (
+                            <p className={chatForumBodyClass}>
+                              {trimmedBody}
+                            </p>
+                          ) : null}
+
+                          {message.image_url ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLightboxSrc(message.image_url)
+                              }
+                              className={`relative block w-full overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40 ${
+                                showText || message.reply_to ? "mt-4" : ""
+                              }`}
+                            >
+                              <span className="relative block aspect-[4/3] w-full">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={message.image_url}
+                                  alt=""
+                                  className="h-full w-full rounded-xl object-cover"
+                                  loading="lazy"
+                                />
+                              </span>
+                            </button>
+                          ) : null}
+
+                          {reactionEntries.length > 0 ? (
+                            <div className="mt-4 flex flex-wrap gap-1.5">
+                              {reactionEntries.map(([emoji, users]) => {
+                                const active =
+                                  !!userId && users.includes(userId);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() =>
+                                      void onReact(message.id, emoji)
+                                    }
+                                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
+                                      active
+                                        ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-400"
+                                        : "border-white/10 bg-black/40 text-slate-300 hover:border-white/20"
+                                    }`}
+                                  >
+                                    <span>{emoji}</span>
+                                    <span>{users.length}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+
+                          <div className="mt-4 flex flex-wrap items-center gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => setReplyTo(message)}
+                              className="rounded-full border border-white/10 px-2.5 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
+                            >
+                              رد
+                            </button>
+                            {QUICK_REACTIONS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() =>
+                                  void onReact(message.id, emoji)
+                                }
+                                className="rounded-full border border-transparent px-1.5 py-0.5 text-sm hover:border-white/15 hover:bg-white/5"
+                                aria-label={`تفاعل ${emoji}`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                            <div
+                              className="relative"
+                              ref={
+                                reactPickerFor === message.id
+                                  ? reactPickerRef
+                                  : undefined
+                              }
+                            >
                               <button
                                 type="button"
-                                onClick={() => setReplyTo(message)}
-                                className="rounded-full border border-white/10 px-2.5 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
+                                onClick={() =>
+                                  setReactPickerFor((id) =>
+                                    id === message.id ? null : message.id,
+                                  )
+                                }
+                                className="rounded-full border border-white/10 px-2 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
                               >
-                                رد
+                                +
                               </button>
-                              {QUICK_REACTIONS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  onClick={() =>
-                                    void onReact(message.id, emoji)
-                                  }
-                                  className="rounded-full border border-transparent px-1.5 py-0.5 text-sm hover:border-white/15 hover:bg-white/5"
-                                  aria-label={`تفاعل ${emoji}`}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                              <div className="relative" ref={reactPickerFor === message.id ? reactPickerRef : undefined}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setReactPickerFor((id) =>
-                                      id === message.id ? null : message.id,
-                                    )
-                                  }
-                                  className="rounded-full border border-white/10 px-2 py-1 text-[0.7rem] text-slate-400 hover:border-yellow-400/40 hover:text-yellow-400"
-                                >
-                                  +
-                                </button>
-                                {reactPickerFor === message.id ? (
-                                  <div className="emoji-picker-shell absolute bottom-full end-0 z-20 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
-                                    <EmojiPicker
-                                      theme={Theme.DARK}
-                                      height={320}
-                                      width={300}
-                                      searchPlaceHolder="بحث…"
-                                      previewConfig={{ showPreview: false }}
-                                      skinTonesDisabled
-                                      onEmojiClick={(data) =>
-                                        void onReact(message.id, data.emoji)
-                                      }
-                                    />
-                                  </div>
-                                ) : null}
-                              </div>
+                              {reactPickerFor === message.id ? (
+                                <div className="emoji-picker-shell absolute bottom-full end-0 z-20 mb-2 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+                                  <EmojiPicker
+                                    theme={Theme.DARK}
+                                    height={320}
+                                    width={300}
+                                    searchPlaceHolder="بحث…"
+                                    previewConfig={{ showPreview: false }}
+                                    skinTonesDisabled
+                                    onEmojiClick={(data) =>
+                                      void onReact(message.id, data.emoji)
+                                    }
+                                  />
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </article>
                       );
-                })
+                  })}
+                </div>
               )}
             </div>
 
