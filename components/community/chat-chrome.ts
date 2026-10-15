@@ -12,7 +12,7 @@ export const chatComposerClass =
   "shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right";
 
 export const chatComposerBoxClass =
-  "relative rounded-2xl border border-white/10 bg-[#111] p-3 focus-within:border-yellow-400/35";
+  "rounded-xl border border-zinc-800 focus-within:border-yellow-500/50 focus-within:shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)] bg-[#111111] p-3 transition-all";
 
 /** Premium forum post card — full width, spacious, dark gray on black. */
 export const chatForumPostClass =

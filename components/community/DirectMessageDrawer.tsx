@@ -264,13 +264,10 @@ export function DirectMessageDrawer({
         dir="rtl"
         role="complementary"
         aria-label={`محادثة مع ${peerName}`}
-        className="flex h-full w-full shrink-0 flex-col border-s border-yellow-500/30 bg-black lg:w-96"
-        style={{ backgroundColor: "#000000" }}
+        className="m-2 flex h-[calc(100%-1rem)] w-full shrink-0 flex-col justify-between rounded-2xl border border-yellow-500/30 bg-[#0c0c0c] p-4 shadow-[0_0_25px_-5px_rgba(234,179,8,0.18)] ring-1 ring-yellow-500/20 lg:w-96"
+        style={{ backgroundColor: "#0c0c0c" }}
       >
-        <header
-          className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4"
-          style={{ backgroundColor: "#000000" }}
-        >
+        <header className="mb-3 flex shrink-0 items-center justify-between gap-3 border-b border-yellow-500/15 pb-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
               {peerName ? peerName.substring(0, 2).toUpperCase() : "AF"}
@@ -318,15 +315,12 @@ export function DirectMessageDrawer({
         </header>
 
         {isSelf ? (
-          <div className="flex flex-1 items-center justify-center bg-black p-6 text-sm text-slate-500">
+          <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
             مينفعش تبعت رسالة لنفسك.
           </div>
         ) : (
           <>
-            <div
-              className="flex-1 overflow-y-auto flex flex-col-reverse bg-[#000000] px-4 py-4"
-              style={{ backgroundColor: "#000000" }}
-            >
+            <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto py-2">
               {loading && messages.length === 0 ? (
                 <p className="text-right text-sm text-slate-500">
                   بنحمّل المحادثة…
@@ -381,8 +375,7 @@ export function DirectMessageDrawer({
 
             <form
               dir="rtl"
-              className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right"
-              style={{ backgroundColor: "#000000" }}
+              className="mt-3 w-full shrink-0 text-right"
               onSubmit={(e) => {
                 e.preventDefault();
                 void send();

@@ -639,19 +639,17 @@ export function CommunityView({
       ) : null}
 
       <section
-        className={`relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-black pl-16 ${
+        className={`relative m-2 flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] p-4 shadow-[0_0_20px_-5px_rgba(0,0,0,0.8)] transition-colors hover:border-yellow-500/25 pl-16 ${
           activeChatUser ? "max-lg:hidden" : ""
         }`}
+        style={{ backgroundColor: "#0a0a0a" }}
       >
         {tab === "inbox" &&
         (role === "organizer" || role === "instructor") ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
-            <header
-              className="shrink-0 border-b border-white/10 bg-[#000000] px-3 py-3 text-right sm:px-5 sm:py-4"
-              style={{ backgroundColor: "#000000" }}
-            >
+            <header className="mb-4 shrink-0 border-b border-white/10 pb-3 text-right">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h1 className="font-display text-sm font-bold text-white sm:text-base">
@@ -685,8 +683,7 @@ export function CommunityView({
             <div
               key={`${courseId}-${channelId}`}
               dir="rtl"
-              className="flex flex-1 flex-col-reverse overflow-y-auto bg-black px-4 py-6 text-right"
-              style={{ backgroundColor: "#000000" }}
+              className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto py-4 text-right"
             >
               {loading ? (
                 <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">
@@ -948,8 +945,7 @@ export function CommunityView({
             {announcementsReadOnly ? (
               <div
                 dir="rtl"
-                className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-center"
-                style={{ backgroundColor: "#000000" }}
+                className="mt-3 w-full shrink-0 rounded-xl border border-zinc-800 bg-[#111111] p-4 text-center"
                 role="status"
                 aria-live="polite"
               >
@@ -964,8 +960,7 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="shrink-0 sticky bottom-0 z-40 w-full border-t border-gray-800 bg-black p-4 text-right"
-              style={{ backgroundColor: "#000000" }}
+              className="mt-3 w-full shrink-0 text-right"
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();
