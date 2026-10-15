@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useAuthStore } from "@/lib/auth-store";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 import {
@@ -39,8 +38,8 @@ type DirectMessageDrawerProps = {
 };
 
 /**
- * Viewport-locked slide-over DM panel (portaled to document.body).
- * Never mounts inside the community scroll container.
+ * Inline DM panel — sits side-by-side with the main channel chat in a flex row.
+ * Does NOT overlay or cover the main composer.
  */
 export function DirectMessageDrawer({
   user,
@@ -65,24 +64,18 @@ export function DirectMessageDrawer({
   const [actionBusy, setActionBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   const lastIncomingId = useRef<string | null>(null);
   const loadedPeerRef = useRef<string | null>(null);
   const onOpenedPeerRef = useRef(onOpenedPeer);
   const onCloseRef = useRef(onClose);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollLockY = useRef(0);
 
   onOpenedPeerRef.current = onOpenedPeer;
   onCloseRef.current = onClose;
 
   const isSelf = Boolean(myId && peerUserId === myId);
   const canSend = Boolean((draft.trim() || file) && !chatMuted);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!peerUserId) return;
@@ -131,31 +124,11 @@ export function DirectMessageDrawer({
   }, [peerUserId, myId, user.name]);
 
   useEffect(() => {
-    scrollLockY.current = window.scrollY;
-    const { style } = document.body;
-    const prev = {
-      overflow: style.overflow,
-      position: style.position,
-      top: style.top,
-      width: style.width,
-    };
-    style.overflow = "hidden";
-    style.position = "fixed";
-    style.top = `-${scrollLockY.current}px`;
-    style.width = "100%";
-
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
-    return () => {
-      style.overflow = prev.overflow;
-      style.position = prev.position;
-      style.top = prev.top;
-      style.width = prev.width;
-      window.scrollTo(0, scrollLockY.current);
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
@@ -285,35 +258,14 @@ export function DirectMessageDrawer({
     setNotice("تم إرسال البلاغ للإدارة. شكراً.");
   };
 
-  if (!mounted) return null;
-
-  return createPortal(
+  return (
     <>
-      <button
-        type="button"
-        aria-label="قفل المحادثة"
-        className="fixed inset-0 z-40 bg-black/70"
-        style={{ position: "fixed", inset: 0, zIndex: 40 }}
-        onClick={() => onCloseRef.current()}
-      />
-
       <aside
         dir="rtl"
-        role="dialog"
-        aria-modal="true"
+        role="complementary"
         aria-label={`محادثة مع ${peerName}`}
-        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-yellow-500/30 bg-black shadow-2xl transition-transform md:w-96"
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: "auto",
-          height: "100dvh",
-          maxHeight: "100dvh",
-          zIndex: 9999,
-          backgroundColor: "#000000",
-        }}
+        className="flex h-full w-full shrink-0 flex-col border-s border-yellow-500/30 bg-black lg:w-96"
+        style={{ backgroundColor: "#000000" }}
       >
         <header
           className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-4"
@@ -511,7 +463,6 @@ export function DirectMessageDrawer({
         src={lightboxSrc}
         onClose={() => setLightboxSrc(null)}
       />
-    </>,
-    document.body,
+    </>
   );
 }

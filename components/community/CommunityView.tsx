@@ -628,7 +628,21 @@ export function CommunityView({
         </button>
       ) : null}
 
-      <section className="relative flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-black">
+      {/* DM panel inline — sits beside main chat, never overlays it */}
+      {activeChatUser ? (
+        <DirectMessageDrawer
+          user={activeChatUser}
+          onClose={handleDmClose}
+          incomingMessage={liveIncoming}
+          onOpenedPeer={handleOpenedPeer}
+        />
+      ) : null}
+
+      <section
+        className={`relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-black pl-16 ${
+          activeChatUser ? "max-lg:hidden" : ""
+        }`}
+      >
         {tab === "inbox" &&
         (role === "organizer" || role === "instructor") ? (
           <AmgadInbox courseId={courseId} />
@@ -1080,14 +1094,14 @@ export function CommunityView({
         )}
       </section>
 
-      {/* مساعد التعلم — pinned to absolute left edge */}
+      {/* مساعد التعلم — higher on the left, clear of message cards */}
       {courseModule ? (
         <button
           type="button"
           onClick={() => setShowAssistant(true)}
           title="مساعد التعلم"
           aria-label="فتح مساعد التعلم"
-          className="fixed left-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-2 rounded-e-2xl border border-l-0 border-yellow-400/40 bg-yellow-400/15 px-2.5 py-4 text-yellow-400 shadow-[0_0_24px_rgba(251,191,36,0.12)] transition hover:bg-yellow-400 hover:text-[#050505] lg:flex"
+          className="fixed left-0 top-32 z-40 hidden flex-col items-center gap-2 rounded-e-2xl border border-l-0 border-yellow-400/40 bg-yellow-400/15 px-2.5 py-4 text-yellow-400 shadow-[0_0_24px_rgba(251,191,36,0.12)] transition hover:bg-yellow-400 hover:text-[#050505] lg:flex"
         >
           <span className="text-lg leading-none" aria-hidden>
             ✦
@@ -1105,15 +1119,6 @@ export function CommunityView({
         src={lightboxSrc}
         onClose={() => setLightboxSrc(null)}
       />
-
-      {activeChatUser ? (
-        <DirectMessageDrawer
-          user={activeChatUser}
-          onClose={handleDmClose}
-          incomingMessage={liveIncoming}
-          onOpenedPeer={handleOpenedPeer}
-        />
-      ) : null}
     </div>
   );
 }
