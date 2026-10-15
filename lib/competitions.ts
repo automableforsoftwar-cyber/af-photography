@@ -208,12 +208,20 @@ export async function syncCompetitionAnnouncements(
     .eq("id", competition.id);
 }
 
-/** Sweep all competitions for announcement side-effects (safe to call often). */
+/** Sweep competitions that still need start/end announcements (non-blocking). */
 export async function syncAllCompetitionAnnouncements(): Promise<void> {
-  const { data, error } = await supabase.from("competitions").select(SELECT);
-  if (error || !data) return;
-  for (const row of data as Competition[]) {
-    await syncCompetitionAnnouncements(row);
+  try {
+    const { data, error } = await supabase
+      .from("competitions")
+      .select(SELECT)
+      .or("announced_start.eq.false,announced_end.eq.false")
+      .limit(40);
+    if (error || !data) return;
+    for (const row of data as Competition[]) {
+      await syncCompetitionAnnouncements(row);
+    }
+  } catch (err) {
+    console.error("syncAllCompetitionAnnouncements:", err);
   }
 }
 

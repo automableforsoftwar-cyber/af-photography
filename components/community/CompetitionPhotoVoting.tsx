@@ -5,7 +5,7 @@
  * Staff can delete entries and ban users from competitions.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
@@ -31,6 +31,16 @@ import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
 import { useLiveStaffRole } from "@/lib/use-live-staff";
 
+function isWithinWindow(
+  competition: Pick<Competition, "starts_at" | "ends_at">,
+  nowMs: number,
+): boolean {
+  const start = new Date(competition.starts_at).getTime();
+  const end = new Date(competition.ends_at).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+  return nowMs >= start && nowMs <= end;
+}
+
 export function CompetitionPhotoVoting() {
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
@@ -51,58 +61,81 @@ export function CompetitionPhotoVoting() {
   const [notice, setNotice] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [isCompetitionBlocked, setIsCompetitionBlocked] = useState(false);
+  /** Primitive tick — never put Date objects in effect deps */
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const loadGen = useRef(0);
 
   const displayName = pickDisplayName(fullName, email);
 
-  const competitionActive = (() => {
+  // Safe countdown: empty deps + cleanup. Only updates a number.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const competitionActive = useMemo(() => {
     if (!activeCompetition) return false;
-    const now = new Date();
-    const start = new Date(activeCompetition.starts_at);
-    const end = new Date(activeCompetition.ends_at);
-    return now >= start && now <= end;
-  })();
+    return (
+      isWithinWindow(activeCompetition, nowMs) &&
+      competitionPhase(activeCompetition, nowMs) === "active"
+    );
+  }, [activeCompetition, nowMs]);
 
   const load = useCallback(async () => {
+    const gen = ++loadGen.current;
     setLoading(true);
-    await syncAllCompetitionAnnouncements();
 
-    const flags = await fetchMyProfileFlags();
-    setIsCompetitionBlocked(flags.isCompetitionBlocked);
+    // Never block the UI on announcement side-effects
+    void syncAllCompetitionAnnouncements();
 
-    let active: Competition | null = null;
-    if (activeCourseId) {
-      active = await fetchActiveCompetitionForCourse(activeCourseId);
-    }
-    if (!active) {
-      const globals = await fetchActiveCompetitions();
-      active = globals[0] ?? null;
-    }
-    if (active) {
-      const now = new Date();
-      const start = new Date(active.starts_at);
-      const end = new Date(active.ends_at);
-      if (
-        !(now >= start && now <= end) ||
-        competitionPhase(active) !== "active"
-      ) {
-        active = null;
+    try {
+      const flags = await fetchMyProfileFlags();
+      if (gen !== loadGen.current) return;
+      setIsCompetitionBlocked(flags.isCompetitionBlocked);
+
+      let active: Competition | null = null;
+      if (activeCourseId) {
+        active = await fetchActiveCompetitionForCourse(activeCourseId);
       }
-    }
-    setActiveCompetition(active);
+      if (gen !== loadGen.current) return;
+      if (!active) {
+        const globals = await fetchActiveCompetitions();
+        if (gen !== loadGen.current) return;
+        active = globals[0] ?? null;
+      }
+      if (active) {
+        const stamp = Date.now();
+        if (
+          !isWithinWindow(active, stamp) ||
+          competitionPhase(active, stamp) !== "active"
+        ) {
+          active = null;
+        }
+      }
+      if (gen !== loadGen.current) return;
+      setActiveCompetition(active);
 
-    const courseId = activeCourseId ?? active?.course_id ?? null;
-    if (!courseId) {
-      setPosts([]);
-      setLoading(false);
-      return;
+      const courseId = activeCourseId ?? active?.course_id ?? null;
+      if (!courseId) {
+        setPosts([]);
+        return;
+      }
+      const data = await fetchCommunityPosts(userId, "votes", courseId);
+      if (gen !== loadGen.current) return;
+      setPosts(data);
+    } finally {
+      if (gen === loadGen.current) setLoading(false);
     }
-    const data = await fetchCommunityPosts(userId, "votes", courseId);
-    setPosts(data);
-    setLoading(false);
   }, [userId, activeCourseId]);
 
   useEffect(() => {
     void load();
+    return () => {
+      // Invalidate in-flight load so late setState is skipped
+      loadGen.current += 1;
+    };
   }, [load]);
 
   const ranked = useMemo(
@@ -234,7 +267,7 @@ export function CompetitionPhotoVoting() {
     Boolean(activeCompetition);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden lg:flex-row">
+    <div className="relative z-0 flex h-full min-h-0 flex-col gap-6 overflow-hidden lg:flex-row">
       <div
         dir="rtl"
         className="order-1 flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto pe-1 lg:order-2"
@@ -245,7 +278,7 @@ export function CompetitionPhotoVoting() {
             شارك فريمك… أو صوّت للأحسن
           </h2>
           {isCompetitionBlocked ? (
-            <p className="text-red-500 font-bold text-center mt-5">
+            <p className="mt-5 text-center font-bold text-red-500">
               تم منعك من المشاركة في المسابقات من قبل الإدارة.
             </p>
           ) : canShowUploadForm && activeCompetition ? (
@@ -313,6 +346,7 @@ export function CompetitionPhotoVoting() {
                       src={entry.image_url}
                       alt={entry.description || entry.title}
                       className="h-full w-full object-cover"
+                      loading="lazy"
                     />
                   </button>
                   <div className="flex items-center justify-between gap-3 p-4">
@@ -410,10 +444,12 @@ export function CompetitionPhotoVoting() {
         </div>
       </aside>
 
-      <ImageLightbox
-        src={lightboxSrc}
-        onClose={() => setLightboxSrc(null)}
-      />
+      {lightboxSrc ? (
+        <ImageLightbox
+          src={lightboxSrc}
+          onClose={() => setLightboxSrc(null)}
+        />
+      ) : null}
     </div>
   );
 }

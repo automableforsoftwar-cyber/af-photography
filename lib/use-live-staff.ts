@@ -71,12 +71,21 @@ export function useLiveStaffRole(): LiveStaffState {
       setIsChatBlocked(nextChatBlocked);
       setReady(true);
 
-      useAuthStore.setState({
-        role: nextRole,
-        title: nextTitle,
-        isBlocked: nextBlocked,
-        isChatBlocked: nextChatBlocked,
-      });
+      // Only write when values actually change — avoids store churn / re-renders
+      const current = useAuthStore.getState();
+      if (
+        current.role !== nextRole ||
+        current.title !== nextTitle ||
+        current.isBlocked !== nextBlocked ||
+        current.isChatBlocked !== nextChatBlocked
+      ) {
+        useAuthStore.setState({
+          role: nextRole,
+          title: nextTitle,
+          isBlocked: nextBlocked,
+          isChatBlocked: nextChatBlocked,
+        });
+      }
     };
 
     void load();

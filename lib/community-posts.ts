@@ -55,7 +55,8 @@ export async function fetchCommunityPosts(
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data, error } = await query;
+  // Cap rows so the competitions page never mounts an unbounded image grid
+  const { data, error } = await query.limit(60);
 
   if (error) {
     console.error("community_posts fetch:", error);

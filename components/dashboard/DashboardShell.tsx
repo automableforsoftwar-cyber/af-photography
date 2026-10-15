@@ -93,6 +93,8 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
 
   useEffect(() => {
     setMobileNavOpen(false);
+    // Clear any stuck scroll-lock / overlay state when changing dashboard routes
+    document.body.style.overflow = "";
   }, [pathname]);
 
   useEffect(() => {
@@ -190,13 +192,13 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
   return (
     <AuthGate>
       <div
-        className="relative flex h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-[#000000] z-50"
+        className="relative z-0 flex h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-[#000000]"
         style={{ backgroundColor: "#000000" }}
       >
-        {/* Desktop top nav — opaque bar + explicit logout */}
+        {/* Desktop top nav — always above page content so navigation never freezes */}
         <nav
           aria-label="إجراءات اللوحة"
-          className="pointer-events-none fixed inset-x-0 top-0 z-50 hidden justify-center bg-[#000000] px-3 py-3 lg:flex"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[60] hidden justify-center bg-[#000000] px-3 py-3 lg:flex"
           style={{ backgroundColor: "#000000" }}
         >
           <div
@@ -251,7 +253,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
         {/* Mobile top bar — opaque black; hamburger left + logo right */}
         <div
           dir="ltr"
-          className="absolute top-0 left-0 z-50 flex w-full items-center justify-between bg-[#000000] px-4 py-3 lg:hidden"
+          className="absolute top-0 left-0 z-[60] flex w-full items-center justify-between bg-[#000000] px-4 py-3 lg:hidden"
           style={{ backgroundColor: "#000000" }}
         >
           <button
@@ -293,10 +295,10 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           id="main"
           className={
             isCommunity
-              ? "flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden p-0 pt-14 lg:pt-16"
+              ? "relative z-0 flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden p-0 pt-14 lg:pt-16"
               : section === "course"
-                ? "flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pb-0 pt-0 sm:px-6 lg:px-8 lg:pt-20"
-                : "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-6 pt-14 sm:px-6 lg:px-8 lg:pt-20"
+                ? "relative z-0 flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pb-0 pt-0 sm:px-6 lg:px-8 lg:pt-20"
+                : "relative z-0 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-6 pt-14 sm:px-6 lg:px-8 lg:pt-20"
           }
         >
           {section === "home" ? (

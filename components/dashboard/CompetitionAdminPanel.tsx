@@ -36,10 +36,13 @@ export function CompetitionAdminPanel({ courseId }: CompetitionAdminPanelProps) 
 
   const load = useCallback(async () => {
     setLoading(true);
-    await syncAllCompetitionAnnouncements();
-    const rows = await fetchCompetitionsForCourse(courseId);
-    setList(rows);
-    setLoading(false);
+    void syncAllCompetitionAnnouncements();
+    try {
+      const rows = await fetchCompetitionsForCourse(courseId);
+      setList(rows);
+    } finally {
+      setLoading(false);
+    }
   }, [courseId]);
 
   useEffect(() => {
@@ -50,10 +53,10 @@ export function CompetitionAdminPanel({ courseId }: CompetitionAdminPanelProps) 
     if (!c) {
       setEditId(undefined);
       setTitle(`مسابقة · ${courseTitle}`);
-      const now = new Date();
-      const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      setStartsAt(toLocalInputValue(now.toISOString()));
-      setEndsAt(toLocalInputValue(end.toISOString()));
+      const nowMs = Date.now();
+      const endMs = nowMs + 7 * 24 * 60 * 60 * 1000;
+      setStartsAt(toLocalInputValue(new Date(nowMs).toISOString()));
+      setEndsAt(toLocalInputValue(new Date(endMs).toISOString()));
       setMaxVotes(3);
       return;
     }
@@ -64,13 +67,14 @@ export function CompetitionAdminPanel({ courseId }: CompetitionAdminPanelProps) 
     setMaxVotes(c.max_votes_per_user);
   };
 
+  // Reset form only when the course id changes — primitives only in deps
   useEffect(() => {
     setEditId(undefined);
     setTitle(`مسابقة · ${courseTitle}`);
-    const now = new Date();
-    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    setStartsAt(toLocalInputValue(now.toISOString()));
-    setEndsAt(toLocalInputValue(end.toISOString()));
+    const nowMs = Date.now();
+    const endMs = nowMs + 7 * 24 * 60 * 60 * 1000;
+    setStartsAt(toLocalInputValue(new Date(nowMs).toISOString()));
+    setEndsAt(toLocalInputValue(new Date(endMs).toISOString()));
     setMaxVotes(3);
   }, [courseId, courseTitle]);
 

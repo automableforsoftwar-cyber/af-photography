@@ -79,12 +79,11 @@ export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
     }
   }, [src, downloading]);
 
-  if (!mounted) return null;
+  if (!mounted || !src) return null;
 
   return createPortal(
     <AnimatePresence>
-      {src ? (
-        <motion.div
+      <motion.div
           className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -159,7 +158,6 @@ export function ImageLightbox({ src, alt = "", onClose }: ImageLightboxProps) {
             />
           </motion.div>
         </motion.div>
-      ) : null}
     </AnimatePresence>,
     document.body,
   );

@@ -37,19 +37,42 @@ export function PublicShowcaseGallery() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    await syncAllCompetitionAnnouncements();
-    const active = await fetchActiveCompetitions();
-    setHasActiveCompetition(active.length > 0);
-    const data = active.length
-      ? await fetchActiveCompetitionPosts(userId)
-      : [];
-    setPosts(data);
-    setLoading(false);
+    // Fire-and-forget — never block gallery render on announcement writes
+    void syncAllCompetitionAnnouncements();
+    try {
+      const active = await fetchActiveCompetitions();
+      setHasActiveCompetition(active.length > 0);
+      const data = active.length
+        ? await fetchActiveCompetitionPosts(userId)
+        : [];
+      setPosts(data);
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      void syncAllCompetitionAnnouncements();
+      try {
+        const active = await fetchActiveCompetitions();
+        if (cancelled) return;
+        setHasActiveCompetition(active.length > 0);
+        const data = active.length
+          ? await fetchActiveCompetitionPosts(userId)
+          : [];
+        if (cancelled) return;
+        setPosts(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const castVote = useCallback(async (postId: string) => {
     setBusyId(postId);

@@ -73,10 +73,10 @@ export function CourseDashboardView() {
   });
 
   useEffect(() => {
-    if (isPanel(panelParam) && panelParam !== panel) {
+    if (isPanel(panelParam)) {
       setPanel(panelParam);
     }
-  }, [panel, panelParam]);
+  }, [panelParam]);
 
   const onSelectPanel = (id: DashboardPanel) => {
     setPanel(id);

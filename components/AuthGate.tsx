@@ -31,13 +31,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [authHydrated, progressHydrated]);
 
+  const unlockedCount = unlockedCourseIds.length;
+
   useEffect(() => {
     if (!authHydrated) return;
     syncAuthCookies({
       isLoggedIn,
-      unlockedCount: unlockedCourseIds.length,
+      unlockedCount,
     });
-  }, [authHydrated, isLoggedIn, unlockedCourseIds]);
+  }, [authHydrated, isLoggedIn, unlockedCount]);
 
   useEffect(() => {
     if (!hydrated) return;
