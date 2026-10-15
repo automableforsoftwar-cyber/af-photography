@@ -122,7 +122,7 @@ export function PublicShowcaseGallery() {
             المسجّلين فقط — الضيوف هيتحولوا لتسجيل الدخول / إنشاء حساب.
           </p>
           {!loading && !hasActiveCompetition ? (
-            <p className="text-yellow-500">لا توجد مسابقة نشطة حالياً</p>
+            <p>لا توجد مسابقة نشطة حالياً</p>
           ) : null}
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90" role="status">

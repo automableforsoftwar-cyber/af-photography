@@ -18,6 +18,7 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false);
   const hydrated = usePersistHydrated(useAuthStore.persist);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const logout = useAuthStore((s) => s.logout);
   const { isStaff } = useLiveStaffRole();
 
   useEffect(() => {
@@ -159,14 +160,25 @@ export function Navbar() {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <SocialIconLinks className="hidden sm:flex" />
           {hydrated && isLoggedIn ? (
-            isStaff ? (
-              <Link
-                href="/dashboard/admin"
-                className="hidden rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:inline-flex sm:px-4 sm:text-sm"
+            <>
+              {isStaff ? (
+                <Link
+                  href="/dashboard/admin"
+                  className="hidden rounded-full border border-yellow-400/50 bg-yellow-400/15 px-3.5 py-2 text-xs font-semibold text-yellow-400 transition hover:bg-yellow-400 hover:text-[#050505] sm:inline-flex sm:px-4 sm:text-sm"
+                >
+                  الإدارة
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  void logout();
+                }}
+                className="rounded-full border border-red-500 bg-red-600 px-3.5 py-2 text-xs font-bold text-white sm:px-4 sm:text-sm"
               >
-                الإدارة
-              </Link>
-            ) : null
+                تسجيل الخروج
+              </button>
+            </>
           ) : (
             <button
               type="button"

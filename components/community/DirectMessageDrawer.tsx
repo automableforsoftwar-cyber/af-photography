@@ -24,8 +24,6 @@ import {
   chatBubbleMineClass,
   chatBubbleOtherClass,
   chatComposerBoxClass,
-  chatComposerClass,
-  chatScrollClass,
 } from "@/components/community/chat-chrome";
 
 export type ActiveChatUser = {
@@ -69,7 +67,6 @@ export function DirectMessageDrawer({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastIncomingId = useRef<string | null>(null);
   const loadedPeerRef = useRef<string | null>(null);
   const onOpenedPeerRef = useRef(onOpenedPeer);
@@ -160,10 +157,6 @@ export function DirectMessageDrawer({
       window.removeEventListener("keydown", onKey);
     };
   }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
-  }, [messages.length]);
 
   useEffect(() => {
     if (!incomingMessage) return;
@@ -378,7 +371,10 @@ export function DirectMessageDrawer({
           </div>
         ) : (
           <>
-            <div className={chatScrollClass} style={{ backgroundColor: "#0a0a0a" }}>
+            <div
+              className="flex-1 overflow-y-auto flex flex-col-reverse bg-[#000000] px-4 py-4"
+              style={{ backgroundColor: "#000000" }}
+            >
               {loading && messages.length === 0 ? (
                 <p className="text-right text-sm text-slate-500">
                   بنحمّل المحادثة…
@@ -388,8 +384,8 @@ export function DirectMessageDrawer({
                   لسه مفيش رسائل مع {peerName} — ابدأ المحادثة.
                 </p>
               ) : (
-                <ul className="flex flex-col gap-3">
-                  {messages.map((m) => {
+                <ul className="flex flex-col-reverse gap-3">
+                  {[...messages].reverse().map((m) => {
                     const mine = m.sender_id === myId;
                     const showText = m.content && m.content !== "(صورة)";
                     return (
@@ -430,15 +426,14 @@ export function DirectMessageDrawer({
                       </li>
                     );
                   })}
-                  <div ref={messagesEndRef} />
                 </ul>
               )}
             </div>
 
             <form
               dir="rtl"
-              className={chatComposerClass}
-              style={{ backgroundColor: "#0a0a0a" }}
+              className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right"
+              style={{ backgroundColor: "#000000" }}
               onSubmit={(e) => {
                 e.preventDefault();
                 void send();

@@ -14,9 +14,6 @@ import {
   chatBubbleMineClass,
   chatBubbleOtherClass,
   chatComposerBoxClass,
-  chatComposerClass,
-  chatScrollClass,
-  chatShellClass,
 } from "@/components/community/chat-chrome";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
@@ -110,9 +107,28 @@ export function CommunityView({
   activeChatUserRef.current = activeChatUser;
 
   useEffect(() => {
-    setTab(initialTab);
+    // Students must never land on inbox
+    if (
+      initialTab === "inbox" &&
+      role !== "organizer" &&
+      role !== "instructor"
+    ) {
+      setTab("general");
+    } else {
+      setTab(initialTab);
+    }
     setShowAssistant(false);
-  }, [courseId, initialTab]);
+  }, [courseId, initialTab, role]);
+
+  useEffect(() => {
+    if (
+      tab === "inbox" &&
+      role !== "organizer" &&
+      role !== "instructor"
+    ) {
+      setTab("general");
+    }
+  }, [tab, role]);
 
   const authorName = pickDisplayName(fullName, email);
   const hasAnyUnread = unreadSenders.size > 0;
@@ -439,11 +455,11 @@ export function CommunityView({
     { id: "general", label: "#عام" },
     { id: "announcements", label: "#الرسائل" },
     { id: "photos", label: "#الصور" },
-    {
-      id: "inbox",
-      label: isStaff ? "صندوق الوارد" : "أمجد فريد",
-    },
   ];
+  // HARDCODE: inbox is staff-only — never render for students
+  if (role === "organizer" || role === "instructor") {
+    tabs.push({ id: "inbox", label: "صندوق الوارد" });
+  }
 
   const courseModule = getModuleById(courseId);
   const reversedMessages = [...messages].reverse();
@@ -464,8 +480,8 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0a0a0a] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
-      style={{ backgroundColor: "#0a0a0a" }}
+      className="relative flex flex-col h-screen overflow-hidden bg-[#000000] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
+      style={{ backgroundColor: "#000000" }}
     >
       {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
       <aside
@@ -565,13 +581,17 @@ export function CommunityView({
         </div>
       </aside>
 
-      <section className={chatShellClass} style={{ backgroundColor: "#0a0a0a" }}>
-        {tab === "inbox" ? (
+      <section
+        className="flex flex-col h-screen overflow-hidden bg-[#000000]"
+        style={{ backgroundColor: "#000000" }}
+      >
+        {tab === "inbox" &&
+        (role === "organizer" || role === "instructor") ? (
           <AmgadInbox courseId={courseId} />
         ) : (
           <>
             <header
-              className="shrink-0 border-b border-white/10 bg-black px-3 py-3 text-right sm:px-5 sm:py-4"
+              className="shrink-0 border-b border-white/10 bg-[#000000] px-3 py-3 text-right sm:px-5 sm:py-4"
               style={{ backgroundColor: "#000000" }}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -606,8 +626,8 @@ export function CommunityView({
 
             <div
               key={`${courseId}-${channelId}`}
-              className={chatScrollClass}
-              style={{ backgroundColor: "#0a0a0a" }}
+              className="flex-1 overflow-y-auto flex flex-col-reverse bg-[#000000] px-4 py-4"
+              style={{ backgroundColor: "#000000" }}
             >
               {loading ? (
                 <div className="flex flex-1 items-center justify-center px-5 py-12 text-gray-400">
@@ -863,7 +883,8 @@ export function CommunityView({
             {announcementsReadOnly ? (
               <div
                 dir="rtl"
-                className="shrink-0 w-full border-t border-white/10 bg-black px-4 py-6 text-center pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+                className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-center"
+                style={{ backgroundColor: "#000000" }}
                 role="status"
                 aria-live="polite"
               >
@@ -878,8 +899,8 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className={chatComposerClass}
-              style={{ backgroundColor: "#0a0a0a" }}
+              className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right"
+              style={{ backgroundColor: "#000000" }}
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();

@@ -1,12 +1,12 @@
 /** Shared chrome for every community channel and the DM drawer. */
 export const chatShellClass =
-  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]";
+  "flex flex-col h-screen overflow-hidden bg-[#000000]";
 
 export const chatScrollClass =
-  "premium-scroll flex min-h-0 flex-1 flex-col-reverse gap-3 overflow-y-auto overscroll-contain bg-[#0a0a0a] px-4 py-4";
+  "flex-1 overflow-y-auto flex flex-col-reverse bg-[#000000] px-4 py-4";
 
 export const chatComposerClass =
-  "sticky bottom-0 z-10 w-full shrink-0 border-t border-gray-800 bg-[#0a0a0a] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-right";
+  "shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right";
 
 export const chatComposerBoxClass =
   "relative rounded-2xl border border-white/10 bg-[#111] p-3 focus-within:border-yellow-400/35";

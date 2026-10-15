@@ -41,7 +41,15 @@ export function CompetitionPhotoVoting() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const displayName = pickDisplayName(fullName, email);
-  const competitionActive = Boolean(activeCompetition);
+
+  // HARDCODE: active only when now is inside starts_at / ends_at
+  const competitionActive = (() => {
+    if (!activeCompetition) return false;
+    const now = new Date();
+    const start = new Date(activeCompetition.starts_at);
+    const end = new Date(activeCompetition.ends_at);
+    return now >= start && now <= end;
+  })();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,8 +63,13 @@ export function CompetitionPhotoVoting() {
       const globals = await fetchActiveCompetitions();
       active = globals[0] ?? null;
     }
-    if (!active || competitionPhase(active) !== "active") {
-      active = null;
+    if (active) {
+      const now = new Date();
+      const start = new Date(active.starts_at);
+      const end = new Date(active.ends_at);
+      if (!(now >= start && now <= end) || competitionPhase(active) !== "active") {
+        active = null;
+      }
     }
     setActiveCompetition(active);
 
@@ -210,7 +223,7 @@ export function CompetitionPhotoVoting() {
               </PremiumButton>
             </div>
           ) : (
-            <p className="text-yellow-500">لا توجد مسابقة نشطة حالياً</p>
+            <p>لا توجد مسابقة نشطة حالياً</p>
           )}
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>

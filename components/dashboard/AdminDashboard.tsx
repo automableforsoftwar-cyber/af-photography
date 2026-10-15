@@ -298,7 +298,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   // Full-bleed community — isolates from Admin sidebar (no layout bleed)
   if (tab === "community") {
     const communityBody = (
-      <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]">
+      <div
+        className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#000000] z-50"
+        style={{ backgroundColor: "#000000" }}
+      >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-2.5 sm:px-4">
           <button
             type="button"
@@ -324,7 +327,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
     if (embedded) return communityBody;
     return (
       <AuthGate>
-        <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505] px-3 pb-4 pt-20 sm:px-6 lg:px-8">
+        <div
+          className="relative flex min-h-svh flex-col overflow-x-clip bg-[#000000] z-50 px-3 pb-4 pt-20 sm:px-6 lg:px-8"
+          style={{ backgroundColor: "#000000" }}
+        >
           <div className="relative flex min-h-0 flex-1 flex-col">
             {communityBody}
           </div>
@@ -703,7 +709,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
   );
 
   const body = (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/40 backdrop-blur-xl lg:flex-row">
+    <div
+      className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#000000] z-50 lg:flex-row"
+      style={{ backgroundColor: "#000000" }}
+    >
       {sidebar}
       {panel}
     </div>
@@ -715,7 +724,10 @@ export function AdminDashboard({ embedded = false }: AdminDashboardProps) {
 
   return (
     <AuthGate>
-      <div className="relative flex min-h-svh flex-col overflow-x-clip bg-[#050505] px-4 pb-6 pt-20 sm:px-6 lg:px-8">
+      <div
+        className="relative flex min-h-svh flex-col overflow-x-clip bg-[#000000] z-50 px-4 pb-6 pt-20 sm:px-6 lg:px-8"
+        style={{ backgroundColor: "#000000" }}
+      >
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]"

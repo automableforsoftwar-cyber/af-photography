@@ -109,6 +109,12 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
       ? pathname === "/dashboard"
       : pathname === href || pathname.startsWith(`${href}/`);
 
+  const doLogout = () => {
+    void logout().then(() => {
+      router.push("/");
+    });
+  };
+
   const mobileMenu =
     mounted && mobileNavOpen
       ? createPortal(
@@ -162,9 +168,17 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                 style={{ backgroundColor: "#0a0a0a" }}
               >
                 <AuthButton appearance="plain" intent="exit-home" />
-                {/* Logout is LAST item in the mobile drawer only */}
                 <div className="mt-2">
-                  <AuthButton appearance="plain" intent="logout" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileNavOpen(false);
+                      doLogout();
+                    }}
+                    className="w-full rounded-full border border-red-500 bg-red-600 px-4 py-2.5 text-sm font-bold text-white"
+                  >
+                    تسجيل الخروج
+                  </button>
                 </div>
               </div>
             </aside>
@@ -175,16 +189,20 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
 
   return (
     <AuthGate>
-      <div className="relative flex h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-[#050505]">
-        {/* Desktop top nav — logo + links only (no logout in header) */}
+      <div
+        className="relative flex h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-[#000000] z-50"
+        style={{ backgroundColor: "#000000" }}
+      >
+        {/* Desktop top nav — opaque bar + explicit logout */}
         <nav
           aria-label="إجراءات اللوحة"
-          className="pointer-events-none fixed inset-x-0 top-4 z-50 hidden justify-center px-3 lg:flex"
+          className="pointer-events-none fixed inset-x-0 top-0 z-50 hidden justify-center bg-[#000000] px-3 py-3 lg:flex"
+          style={{ backgroundColor: "#000000" }}
         >
           <div
             dir="rtl"
-            className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-transparent px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3"
-            style={{ backgroundColor: "transparent", backgroundImage: "none" }}
+            className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-[#000000] px-4 py-2.5 sm:gap-x-5 sm:px-6 sm:py-3"
+            style={{ backgroundColor: "#000000" }}
           >
             <Link
               href="/dashboard"
@@ -219,15 +237,22 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
                   </Link>
                 );
               })}
+              <button
+                type="button"
+                onClick={doLogout}
+                className="rounded-full border border-red-500 bg-red-600 px-4 py-1.5 text-sm font-bold text-white"
+              >
+                تسجيل الخروج
+              </button>
             </div>
           </div>
         </nav>
 
-        {/* Mobile top bar — fully transparent; hamburger left + logo right */}
+        {/* Mobile top bar — opaque black; hamburger left + logo right */}
         <div
           dir="ltr"
-          className="absolute top-0 left-0 z-50 flex w-full items-center justify-between bg-transparent px-4 py-3 lg:hidden"
-          style={{ backgroundColor: "transparent", backgroundImage: "none" }}
+          className="absolute top-0 left-0 z-50 flex w-full items-center justify-between bg-[#000000] px-4 py-3 lg:hidden"
+          style={{ backgroundColor: "#000000" }}
         >
           <button
             type="button"
@@ -324,11 +349,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
               <div className="mt-8 flex justify-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    void logout().then(() => {
-                      router.push("/");
-                    });
-                  }}
+                  onClick={doLogout}
                   className="rounded-full border border-red-500 bg-red-600 px-8 py-3 text-base font-bold text-white shadow-lg"
                 >
                   تسجيل الخروج
