@@ -302,7 +302,7 @@ export function DirectMessageDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`محادثة مع ${peerName}`}
-        className="fixed inset-y-0 right-0 z-50 w-full md:w-96 bg-[#0a0a0a] border-l border-gray-800 shadow-2xl flex flex-col"
+        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-yellow-500/30 bg-black shadow-2xl transition-transform md:w-96"
         style={{
           position: "fixed",
           top: 0,
@@ -312,7 +312,7 @@ export function DirectMessageDrawer({
           height: "100dvh",
           maxHeight: "100dvh",
           zIndex: 9999,
-          backgroundColor: "#0a0a0a",
+          backgroundColor: "#000000",
         }}
       >
         <header

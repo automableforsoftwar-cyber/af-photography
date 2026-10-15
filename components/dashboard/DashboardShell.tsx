@@ -293,7 +293,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
           id="main"
           className={
             isCommunity
-              ? "flex min-h-0 flex-1 flex-col overflow-hidden pt-14 lg:pt-20"
+              ? "flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden p-0 pt-14 lg:pt-16"
               : section === "course"
                 ? "flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pb-0 pt-0 sm:px-6 lg:px-8 lg:pt-20"
                 : "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pb-6 pt-14 sm:px-6 lg:px-8 lg:pt-20"
@@ -373,7 +373,7 @@ export function DashboardShell({ section, courseId }: DashboardShellProps) {
             <CourseRoom courseId={courseId} />
           ) : section === "community" ? (
             activeCourseId || isStaff ? (
-              <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="flex h-full min-h-0 w-full min-w-0 max-w-none flex-1 flex-col overflow-hidden bg-black">
                 <CommunityView
                   key={
                     activeCourseId ?? modules[0]?.id ?? "photographer-eye"

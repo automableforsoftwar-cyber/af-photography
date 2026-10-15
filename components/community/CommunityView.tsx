@@ -101,6 +101,7 @@ export function CommunityView({
   const [liveIncoming, setLiveIncoming] = useState<PeerDirectMessage | null>(
     null,
   );
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const pickerRef = useRef<HTMLDivElement>(null);
   const reactPickerRef = useRef<HTMLDivElement>(null);
   const activeChatUserRef = useRef(activeChatUser);
@@ -480,111 +481,151 @@ export function CommunityView({
   return (
     <div
       dir="rtl"
-      className="relative flex flex-col h-screen overflow-hidden bg-[#000000] text-right lg:flex-row lg:rounded-2xl lg:border lg:border-white/10"
+      className="relative flex w-full h-[calc(100vh-64px)] flex-col overflow-hidden bg-black text-right lg:flex-row"
       style={{ backgroundColor: "#000000" }}
     >
-      {/* Channels — right on desktop (RTL); horizontal chips on mobile */}
+      {/* Collapsible channel sidebar (right in RTL) */}
       <aside
-        className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black lg:w-56 lg:border-b-0 lg:border-s lg:overflow-y-auto"
+        className={`relative flex flex-col overflow-hidden bg-black transition-[width] duration-300 ease-out ${
+          isSidebarOpen
+            ? "w-full shrink-0 border-b border-gray-800 lg:h-full lg:w-80 lg:border-b-0 lg:border-l"
+            : "pointer-events-none w-0 shrink-0 border-0"
+        }`}
         style={{ backgroundColor: "#000000" }}
       >
-        <div
-          className="flex items-center justify-between gap-2 border-b border-white/10 bg-black px-3 py-3 sm:px-4 sm:py-4"
-          style={{ backgroundColor: "#000000" }}
-        >
-          <p className="text-sm font-medium text-white">المجتمع</p>
-          {(role === "organizer" || role === "instructor") && (
-            <span
-              className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
-              title="الرسائل الخاصة"
-              aria-label={
-                hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
-              }
+        {isSidebarOpen ? (
+          <>
+            <div
+              className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-800 bg-black px-3 py-3 sm:px-4"
+              style={{ backgroundColor: "#000000" }}
             >
-              ✉
-              {hasAnyUnread ? (
-                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
-              ) : null}
-            </span>
-          )}
-        </div>
-        <ul className="flex gap-1 overflow-x-auto p-2 premium-scroll lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
-          {tabs.map((t) => {
-            const active = t.id === tab;
-            const isLockedChannel =
-              t.id === "announcements" && !canBroadcastAnnouncements;
-            return (
-              <li key={t.id} className="shrink-0 lg:w-full">
+              <p className="text-sm font-medium text-white">المجتمع</p>
+              <div className="flex items-center gap-2">
+                {(role === "organizer" || role === "instructor") && (
+                  <span
+                    className="relative inline-flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm text-slate-300"
+                    title="الرسائل الخاصة"
+                    aria-label={
+                      hasAnyUnread ? "رسائل غير مقروءة" : "الرسائل الخاصة"
+                    }
+                  >
+                    ✉
+                    {hasAnyUnread ? (
+                      <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-black" />
+                    ) : null}
+                  </span>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAssistant(false);
-                    setTab(t.id);
-                  }}
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-right text-sm whitespace-nowrap transition-colors sm:py-2.5 ${
-                    active
-                      ? "bg-yellow-400/15 font-medium text-yellow-400"
-                      : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                  }`}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="flex size-8 items-center justify-center rounded-lg border border-gray-800 text-yellow-400 transition hover:bg-white/5 lg:hidden"
+                  aria-label="إخفاء القنوات"
                 >
-                  <span>{t.label}</span>
-                  {isLockedChannel ? (
-                    <span className="hidden shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.6rem] text-slate-500 lg:inline">
-                      قراءة فقط
-                    </span>
-                  ) : null}
+                  ➡️
                 </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="mt-auto hidden border-t border-white/10 p-3 lg:block">
-          <p className="mb-2 px-1 text-[0.7rem] font-medium tracking-wide text-slate-500">
-            الرسائل الخاصة
-          </p>
-          {conversations.length === 0 ? (
-            <p className="px-1 text-xs leading-relaxed text-slate-600">
-              اضغط على اسم عضو في الشات عشان تبدأ محادثة خاصة.
-            </p>
-          ) : (
-            <ul className="max-h-48 space-y-1 overflow-y-auto lg:max-h-64">
-              {conversations.map((c) => {
-                const active = activeChatUser?.userId === c.peerUserId;
-                const unread = unreadSenders.has(c.peerUserId) || c.unread;
+              </div>
+            </div>
+            <ul className="flex gap-1 overflow-x-auto p-2 premium-scroll lg:flex-1 lg:flex-col lg:space-y-1 lg:overflow-y-auto lg:p-3">
+              {tabs.map((t) => {
+                const active = t.id === tab;
+                const isLockedChannel =
+                  t.id === "announcements" && !canBroadcastAnnouncements;
                 return (
-                  <li key={c.peerUserId}>
+                  <li key={t.id} className="shrink-0 lg:w-full">
                     <button
                       type="button"
-                      onClick={() => openPeerDm(c.peerUserId, c.peerName)}
-                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
+                      onClick={() => {
+                        setShowAssistant(false);
+                        setTab(t.id);
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-right text-sm whitespace-nowrap transition-colors sm:py-2.5 ${
                         active
                           ? "bg-yellow-400/15 font-medium text-yellow-400"
-                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                          : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                       }`}
                     >
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
-                        {c.peerName
-                          ? c.peerName.substring(0, 2).toUpperCase()
-                          : "AF"}
-                        {unread ? (
-                          <span className="absolute -start-0.5 -top-0.5 size-2 rounded-full bg-red-500 ring-2 ring-[#050505]" />
-                        ) : null}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{c.peerName}</span>
+                      <span>{t.label}</span>
+                      {isLockedChannel ? (
+                        <span className="hidden shrink-0 rounded-full border border-white/10 px-1.5 py-0.5 text-[0.6rem] text-slate-500 lg:inline">
+                          قراءة فقط
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 );
               })}
             </ul>
-          )}
-        </div>
+
+            <div className="mt-auto hidden border-t border-gray-800 p-3 lg:block">
+              <p className="mb-2 px-1 text-[0.7rem] font-medium tracking-wide text-slate-500">
+                الرسائل الخاصة
+              </p>
+              {conversations.length === 0 ? (
+                <p className="px-1 text-xs leading-relaxed text-slate-600">
+                  اضغط على اسم عضو في الشات عشان تبدأ محادثة خاصة.
+                </p>
+              ) : (
+                <ul className="max-h-48 space-y-1 overflow-y-auto lg:max-h-64">
+                  {conversations.map((c) => {
+                    const active = activeChatUser?.userId === c.peerUserId;
+                    const unread = unreadSenders.has(c.peerUserId) || c.unread;
+                    return (
+                      <li key={c.peerUserId}>
+                        <button
+                          type="button"
+                          onClick={() => openPeerDm(c.peerUserId, c.peerName)}
+                          className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors ${
+                            active
+                              ? "bg-yellow-400/15 font-medium text-yellow-400"
+                              : "text-slate-300 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black">
+                            {c.peerName
+                              ? c.peerName.substring(0, 2).toUpperCase()
+                              : "AF"}
+                            {unread ? (
+                              <span className="absolute -start-0.5 -top-0.5 size-2 rounded-full bg-red-500 ring-2 ring-black" />
+                            ) : null}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {c.peerName}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : null}
       </aside>
 
-      <section
-        className="flex flex-col h-screen overflow-hidden bg-[#000000]"
-        style={{ backgroundColor: "#000000" }}
+      {/* Sidebar edge toggle (desktop) */}
+      <button
+        type="button"
+        onClick={() => setIsSidebarOpen((open) => !open)}
+        className="hidden h-full w-8 shrink-0 items-center justify-center border-l border-gray-800 bg-black text-lg text-yellow-400 transition hover:bg-white/5 lg:flex"
+        aria-label={isSidebarOpen ? "إخفاء القنوات" : "إظهار القنوات"}
+        title={isSidebarOpen ? "إخفاء القنوات" : "إظهار القنوات"}
       >
+        {isSidebarOpen ? "➡️" : "⬅️"}
+      </button>
+
+      {/* Mobile reopen when sidebar closed */}
+      {!isSidebarOpen ? (
+        <button
+          type="button"
+          onClick={() => setIsSidebarOpen(true)}
+          className="absolute start-3 top-3 z-30 flex size-9 items-center justify-center rounded-full border border-gray-800 bg-black text-yellow-400 shadow-lg lg:hidden"
+          aria-label="إظهار القنوات"
+        >
+          ⬅️
+        </button>
+      ) : null}
+
+      <section className="relative flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-black">
         {tab === "inbox" &&
         (role === "organizer" || role === "instructor") ? (
           <AmgadInbox courseId={courseId} />
@@ -626,7 +667,7 @@ export function CommunityView({
 
             <div
               key={`${courseId}-${channelId}`}
-              className="flex-1 overflow-y-auto flex flex-col-reverse bg-[#000000] px-4 py-4"
+              className="flex-1 overflow-y-auto flex flex-col-reverse bg-black px-4 py-4"
               style={{ backgroundColor: "#000000" }}
             >
               {loading ? (
@@ -899,7 +940,7 @@ export function CommunityView({
             ) : (
             <form
               dir="rtl"
-              className="shrink-0 bg-black p-4 w-full sticky bottom-0 z-40 border-t border-gray-800 text-right"
+              className="shrink-0 sticky bottom-0 z-40 w-full border-t border-gray-800 bg-black p-4 text-right"
               style={{ backgroundColor: "#000000" }}
               onSubmit={(event) => {
                 event.preventDefault();
@@ -1029,27 +1070,25 @@ export function CommunityView({
         )}
       </section>
 
-      {/* Desktop: مساعد التعلم opposite the community channel list (not a channel) */}
+      {/* مساعد التعلم — pinned to absolute left edge */}
       {courseModule ? (
-        <aside className="hidden w-16 shrink-0 flex-col items-center gap-3 border-e border-white/10 bg-gradient-to-b from-yellow-400/10 to-transparent py-5 lg:flex">
-          <button
-            type="button"
-            onClick={() => setShowAssistant(true)}
-            title="مساعد التعلم"
-            aria-label="فتح مساعد التعلم"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-yellow-400/40 bg-yellow-400/15 px-2.5 py-4 text-yellow-400 shadow-[0_0_24px_rgba(251,191,36,0.12)] transition hover:bg-yellow-400 hover:text-[#050505]"
+        <button
+          type="button"
+          onClick={() => setShowAssistant(true)}
+          title="مساعد التعلم"
+          aria-label="فتح مساعد التعلم"
+          className="fixed left-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-2 rounded-e-2xl border border-l-0 border-yellow-400/40 bg-yellow-400/15 px-2.5 py-4 text-yellow-400 shadow-[0_0_24px_rgba(251,191,36,0.12)] transition hover:bg-yellow-400 hover:text-[#050505] lg:flex"
+        >
+          <span className="text-lg leading-none" aria-hidden>
+            ✦
+          </span>
+          <span
+            className="text-[0.7rem] font-semibold tracking-wide"
+            style={{ writingMode: "vertical-rl" }}
           >
-            <span className="text-lg leading-none" aria-hidden>
-              ✦
-            </span>
-            <span
-              className="text-[0.7rem] font-semibold tracking-wide"
-              style={{ writingMode: "vertical-rl" }}
-            >
-              مساعد التعلم
-            </span>
-          </button>
-        </aside>
+            مساعد التعلم
+          </span>
+        </button>
       ) : null}
 
       <ImageLightbox
