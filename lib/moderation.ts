@@ -122,15 +122,22 @@ export async function deleteCommunityPost(
   if (!isStaffRole(flags.role) || flags.isBlocked) {
     return { ok: false, message: "forbidden" };
   }
+  if (!postId?.trim()) {
+    return { ok: false, message: "missing_id" };
+  }
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("community_posts")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", postId);
 
   if (error) {
     console.error("deleteCommunityPost:", error);
     return { ok: false, message: "delete_failed" };
+  }
+  if (!count || count < 1) {
+    console.error("deleteCommunityPost: no row deleted for", postId);
+    return { ok: false, message: "not_found" };
   }
   return { ok: true };
 }

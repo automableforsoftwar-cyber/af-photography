@@ -384,15 +384,12 @@ export function DirectMessageDrawer({
                   لسه مفيش رسائل مع {peerName} — ابدأ المحادثة.
                 </p>
               ) : (
-                <ul className="flex flex-col-reverse gap-3">
+                <ul className="flex w-full flex-col-reverse gap-3">
                   {[...messages].reverse().map((m) => {
                     const mine = m.sender_id === myId;
                     const showText = m.content && m.content !== "(صورة)";
                     return (
-                      <li
-                        key={m.id}
-                        className={`flex w-full ${mine ? "justify-start" : "justify-end"}`}
-                      >
+                      <li key={m.id} className="flex w-full justify-end">
                         <article
                           className={
                             mine ? chatBubbleMineClass : chatBubbleOtherClass

@@ -226,46 +226,12 @@ export function CompetitionPhotoVoting() {
     setNotice("تم نشر الصورة — شكراً للمشاركة.");
   };
 
-  const renderUploadArea = () => {
-    if (isCompetitionBlocked) {
-      return (
-        <p className="text-red-500 font-bold text-center">
-          تم منعك من المشاركة في المسابقات من قبل الإدارة.
-        </p>
-      );
-    }
-    if (!competitionActive) {
-      return <p>لا توجد مسابقة نشطة حالياً</p>;
-    }
-    return (
-      <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="وصف الصورة"
-          required
-          rows={2}
-          className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
-        />
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
-          <span>{file ? file.name : "اختر صورة من جهازك"}</span>
-          <span className="text-xs text-yellow-400">Browse</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        <PremiumButton
-          disabled={uploadBusy || !file || !description.trim()}
-          onClick={() => void onUpload()}
-        >
-          {uploadBusy ? "جاري الرفع…" : "انشر"}
-        </PremiumButton>
-      </div>
-    );
-  };
+  /** Upload inputs mount ONLY when a live competition window is active. */
+  const canShowUploadForm =
+    !loading &&
+    !isCompetitionBlocked &&
+    competitionActive &&
+    Boolean(activeCompetition);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden lg:flex-row">
@@ -278,19 +244,47 @@ export function CompetitionPhotoVoting() {
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             شارك فريمك… أو صوّت للأحسن
           </h2>
-          {isCompetitionBlocked ? null : competitionActive &&
-            activeCompetition ? (
-            <p className="mt-2 text-sm text-slate-400">
-              المسابقة النشطة: {activeCompetition.title}. ارفع من جهازك مع وصف
-              الصورة. هتنشر باسمك ({displayName}). صوت واحد لكل صورة لكل مستخدم.
+          {isCompetitionBlocked ? (
+            <p className="text-red-500 font-bold text-center mt-5">
+              تم منعك من المشاركة في المسابقات من قبل الإدارة.
             </p>
+          ) : canShowUploadForm && activeCompetition ? (
+            <>
+              <p className="mt-2 text-sm text-slate-400">
+                المسابقة النشطة: {activeCompetition.title}. ارفع من جهازك مع وصف
+                الصورة. هتنشر باسمك ({displayName}). صوت واحد لكل صورة لكل
+                مستخدم.
+              </p>
+              <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="وصف الصورة"
+                  required
+                  rows={2}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
+                />
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
+                  <span>{file ? file.name : "اختر صورة من جهازك"}</span>
+                  <span className="text-xs text-yellow-400">Browse</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <PremiumButton
+                  disabled={uploadBusy || !file || !description.trim()}
+                  onClick={() => void onUpload()}
+                >
+                  {uploadBusy ? "جاري الرفع…" : "انشر"}
+                </PremiumButton>
+              </div>
+            </>
           ) : (
-            <p className="mt-2 text-sm text-slate-400">
-              الرفع متاح فقط أثناء نافذة المسابقة اللي بتحددها الإدارة.
-            </p>
+            <p className="mt-5">لا توجد مسابقة نشطة حالياً</p>
           )}
-
-          <div className="mt-5">{renderUploadArea()}</div>
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
           ) : null}

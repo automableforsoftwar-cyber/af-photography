@@ -11,9 +11,9 @@ import {
 } from "@/components/community/DirectMessageDrawer";
 import { MemberActionMenu } from "@/components/community/MemberActionMenu";
 import {
-  chatBubbleMineClass,
-  chatBubbleOtherClass,
   chatComposerBoxClass,
+  chatForumPostClass,
+  chatForumPostMineClass,
 } from "@/components/community/chat-chrome";
 import { RoleBadge } from "@/components/community/RoleBadge";
 import { AiLearningChat } from "@/components/dashboard/AiLearningChat";
@@ -721,9 +721,9 @@ export function CommunityView({
                       return (
                         <article
                           key={message.id}
-                          className={`group relative flex flex-row gap-3 overflow-visible ${
-                            mine ? chatBubbleMineClass : chatBubbleOtherClass
-                          }`}
+                          className={
+                            mine ? chatForumPostMineClass : chatForumPostClass
+                          }
                         >
                           <div className="relative shrink-0 px-2 py-1">
                             <button
@@ -734,13 +734,13 @@ export function CommunityView({
                               }}
                               disabled={mine}
                               title={mine ? undefined : `رسالة إلى ${label}`}
-                              className={`relative h-10 w-10 rounded-full bg-yellow-500 text-sm font-bold text-black flex items-center justify-center ${
+                              className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-black ${
                                 mine ? "cursor-default" : "cursor-pointer"
                               }`}
                             >
                               {avatarLetters}
                               {!mine && hasUnread ? (
-                                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-[#050505]" />
+                                <span className="absolute -start-0.5 -top-0.5 size-2.5 rounded-full bg-red-500 ring-2 ring-black" />
                               ) : null}
                             </button>
                             {!mine ? (
@@ -756,8 +756,8 @@ export function CommunityView({
                               />
                             ) : null}
                           </div>
-                          <div className="min-w-0 flex-1 text-right">
-                            <div className="flex flex-wrap items-center justify-end gap-2">
+                          <div className="min-w-0 w-full flex-1 text-right">
+                            <div className="flex w-full flex-wrap items-center justify-end gap-2">
                               <p className="text-sm">
                                 <button
                                   type="button"
@@ -822,7 +822,7 @@ export function CommunityView({
                                 onClick={() =>
                                   setLightboxSrc(message.image_url)
                                 }
-                                className={`relative ms-auto block w-full max-w-sm overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40 ${
+                                className={`relative ms-auto block w-full overflow-hidden rounded-xl border border-white/10 transition hover:border-yellow-400/40 ${
                                   showText || message.reply_to ? "mt-3" : "mt-1.5"
                                 }`}
                               >
