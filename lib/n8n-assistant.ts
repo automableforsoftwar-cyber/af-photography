@@ -200,9 +200,13 @@ export async function sendAssistantMessage(input: {
   courseName?: string;
   sessionId?: string;
   imageDataUrl?: string | null;
+  /** Public Supabase Storage URL for image/video attachments. */
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
 }): Promise<AssistantReply> {
   const text = input.message.trim();
-  if (!text && !input.imageDataUrl) {
+  const mediaUrl = input.mediaUrl?.trim() || "";
+  if (!text && !input.imageDataUrl && !mediaUrl) {
     return { ok: false, message: "اكتب رسالة الأول.", sessionId: null };
   }
 
@@ -229,6 +233,12 @@ export async function sendAssistantMessage(input: {
     course_id: input.courseId?.trim() || route.courseIdForPayload,
   };
   if (input.imageDataUrl) body.image = input.imageDataUrl;
+  if (mediaUrl) {
+    body.media_url = mediaUrl;
+    body.media_type = input.mediaType === "video" ? "video" : "image";
+    // Backward-compatible field many n8n flows already read
+    if (input.mediaType !== "video") body.image = mediaUrl;
+  }
 
   try {
     const res = await fetch(route.webhookUrl, {

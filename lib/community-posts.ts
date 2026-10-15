@@ -227,6 +227,15 @@ export async function uploadCommunityPost(input: {
     return { ok: false, message: "login_required" };
   }
 
+  const { data: banRow } = await supabase
+    .from("profiles")
+    .select("is_competition_blocked")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (Boolean(banRow?.is_competition_blocked)) {
+    return { ok: false, message: "competition_blocked" };
+  }
+
   const userName = input.userName.trim();
   const description = input.description.trim();
   const imageUrl = input.imageUrl.trim()

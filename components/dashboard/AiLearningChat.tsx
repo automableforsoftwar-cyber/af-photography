@@ -16,11 +16,14 @@ import {
   type AssistantContext,
   resolveAssistantRoute,
 } from "@/lib/n8n-assistant";
+import { uploadAssistantMedia } from "@/lib/storage";
 
 type Msg = {
   id: string;
   role: "ai" | "user";
   text: string;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
 };
 
 function welcomeText(scope: AssistantContext, courseTitle: string) {
@@ -52,8 +55,11 @@ export function AiLearningChat({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [historyReady, setHistoryReady] = useState(false);
   const [draft, setDraft] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,17 +149,74 @@ export function AiLearningChat({
     endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [messages.length, sending, historyReady]);
 
+  useEffect(() => {
+    return () => {
+      if (mediaPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(mediaPreview);
+      }
+    };
+  }, [mediaPreview]);
+
+  const clearMedia = () => {
+    if (mediaPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(mediaPreview);
+    }
+    setMediaFile(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const onPickMedia = (file: File | null) => {
+    if (!file) {
+      clearMedia();
+      return;
+    }
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      return;
+    }
+    if (mediaPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(mediaPreview);
+    }
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
   const send = async () => {
     const text = draft.trim();
-    if (!text || sending || !historyReady) return;
+    if ((!text && !mediaFile) || sending || !historyReady) return;
+
+    let mediaUrl: string | null = null;
+    let mediaType: "image" | "video" | null = null;
+
+    if (mediaFile) {
+      setSending(true);
+      const up = await uploadAssistantMedia(mediaFile);
+      if (!up.ok) {
+        setSending(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            role: "ai",
+            text: "مقدرناش نرفع الملف. جرّب تاني.",
+          },
+        ]);
+        return;
+      }
+      mediaUrl = up.publicUrl;
+      mediaType = up.mediaType;
+    }
 
     const userMsg: Msg = {
       id: `u-${Date.now()}`,
       role: "user",
-      text,
+      text: text || (mediaType === "video" ? "(فيديو)" : "(صورة)"),
+      mediaUrl,
+      mediaType,
     };
     setMessages((prev) => [...prev, userMsg]);
     setDraft("");
+    clearMedia();
     setSending(true);
 
     if (userId) {
@@ -163,7 +226,9 @@ export function AiLearningChat({
         courseId: course.id,
         sessionId,
         role: "user",
-        content: text,
+        content: mediaUrl
+          ? `${text}${text ? "\n" : ""}${mediaUrl}`
+          : text,
       });
     }
 
@@ -174,6 +239,8 @@ export function AiLearningChat({
       courseId: course.id,
       courseName: course.title,
       sessionId,
+      mediaUrl,
+      mediaType,
     });
 
     const nextSid = result.sessionId || sessionId;
@@ -221,6 +288,7 @@ export function AiLearningChat({
   });
   const workflowLabel = route.workflowName;
   const courseLabel = route.courseNameForPayload;
+  const canSend = Boolean(draft.trim() || mediaFile);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#050505]">
@@ -258,6 +326,10 @@ export function AiLearningChat({
           <div className="space-y-3 px-3 py-4 sm:px-6 sm:py-5">
             {messages.map((msg) => {
               const mine = msg.role === "user";
+              const showText =
+                msg.text &&
+                msg.text !== "(صورة)" &&
+                msg.text !== "(فيديو)";
               return (
                 <div
                   key={msg.id}
@@ -275,7 +347,25 @@ export function AiLearningChat({
                         المساعد
                       </p>
                     ) : null}
-                    {msg.text}
+                    {msg.mediaUrl ? (
+                      <div className="mb-2 overflow-hidden rounded-xl border border-black/10">
+                        {msg.mediaType === "video" ? (
+                          <video
+                            src={msg.mediaUrl}
+                            controls
+                            className="max-h-56 w-full bg-black object-contain"
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={msg.mediaUrl}
+                            alt=""
+                            className="max-h-56 w-full object-cover"
+                          />
+                        )}
+                      </div>
+                    ) : null}
+                    {showText ? msg.text : null}
                   </div>
                 </div>
               );
@@ -295,6 +385,34 @@ export function AiLearningChat({
           void send();
         }}
       >
+        {mediaPreview && mediaFile ? (
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 p-2">
+            {mediaFile.type.startsWith("video/") ? (
+              <video
+                src={mediaPreview}
+                className="h-14 w-20 rounded-lg object-cover"
+                muted
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mediaPreview}
+                alt=""
+                className="h-14 w-20 rounded-lg object-cover"
+              />
+            )}
+            <p className="min-w-0 flex-1 truncate text-xs text-slate-400">
+              {mediaFile.name}
+            </p>
+            <button
+              type="button"
+              onClick={clearMedia}
+              className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-slate-300 hover:text-white"
+            >
+              إزالة
+            </button>
+          </div>
+        ) : null}
         <div className="rounded-2xl border border-white/10 bg-black/40 p-3 focus-within:border-yellow-400/40">
           <label className="sr-only" htmlFor="ai-learn-input">
             رسالتك للمساعد
@@ -311,16 +429,39 @@ export function AiLearningChat({
                 void send();
               }
             }}
-            placeholder="اسأل عن درس، مفهوم، أو تمرين…"
+            placeholder="اسأل عن درس، مفهوم، أو تمرين… أو ارفع صورة/فيديو"
             className="w-full resize-none bg-transparent text-start text-sm leading-relaxed text-white outline-none placeholder:text-slate-500 disabled:opacity-60"
           />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <p className="text-[0.65rem] text-slate-600 sm:text-[0.7rem]">
-              Enter للإرسال
-            </p>
+            <div className="flex items-center gap-2">
+              <label
+                className={`inline-flex size-9 cursor-pointer items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:border-yellow-400/40 hover:text-yellow-400 ${
+                  sending || !historyReady
+                    ? "pointer-events-none opacity-40"
+                    : ""
+                }`}
+                title="ارفع صورة أو فيديو"
+                aria-label="ارفع صورة أو فيديو"
+              >
+                📎
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  disabled={sending || !historyReady}
+                  onChange={(e) =>
+                    onPickMedia(e.target.files?.[0] ?? null)
+                  }
+                />
+              </label>
+              <p className="text-[0.65rem] text-slate-600 sm:text-[0.7rem]">
+                Enter للإرسال
+              </p>
+            </div>
             <button
               type="submit"
-              disabled={!draft.trim() || sending || !historyReady}
+              disabled={!canSend || sending || !historyReady}
               className="rounded-full bg-yellow-400 px-5 py-2 text-sm font-medium text-[#050505] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
             >
               {sending ? "…" : "إرسال"}

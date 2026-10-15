@@ -2,6 +2,7 @@
 
 /**
  * Course competition — device file upload only while Admin competition is active.
+ * Staff can delete entries and ban users from competitions.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,15 +21,24 @@ import {
   syncAllCompetitionAnnouncements,
   type Competition,
 } from "@/lib/competitions";
+import {
+  deleteCommunityPost,
+  fetchMyProfileFlags,
+  setUserCompetitionBlocked,
+} from "@/lib/moderation";
 import { uploadCommunityImage } from "@/lib/storage";
 import { useAuthStore } from "@/lib/auth-store";
 import { pickDisplayName } from "@/lib/display-name";
+import { useLiveStaffRole } from "@/lib/use-live-staff";
 
 export function CompetitionPhotoVoting() {
   const userId = useAuthStore((s) => s.userId);
   const fullName = useAuthStore((s) => s.fullName);
   const email = useAuthStore((s) => s.email);
   const activeCourseId = useAuthStore((s) => s.activeCourseId);
+  const { role } = useLiveStaffRole();
+  const isStaffModerator =
+    role === "instructor" || role === "organizer";
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [activeCompetition, setActiveCompetition] =
     useState<Competition | null>(null);
@@ -36,13 +46,14 @@ export function CompetitionPhotoVoting() {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [modBusyId, setModBusyId] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [isCompetitionBlocked, setIsCompetitionBlocked] = useState(false);
 
   const displayName = pickDisplayName(fullName, email);
 
-  // HARDCODE: active only when now is inside starts_at / ends_at
   const competitionActive = (() => {
     if (!activeCompetition) return false;
     const now = new Date();
@@ -54,6 +65,9 @@ export function CompetitionPhotoVoting() {
   const load = useCallback(async () => {
     setLoading(true);
     await syncAllCompetitionAnnouncements();
+
+    const flags = await fetchMyProfileFlags();
+    setIsCompetitionBlocked(flags.isCompetitionBlocked);
 
     let active: Competition | null = null;
     if (activeCourseId) {
@@ -67,7 +81,10 @@ export function CompetitionPhotoVoting() {
       const now = new Date();
       const start = new Date(active.starts_at);
       const end = new Date(active.ends_at);
-      if (!(now >= start && now <= end) || competitionPhase(active) !== "active") {
+      if (
+        !(now >= start && now <= end) ||
+        competitionPhase(active) !== "active"
+      ) {
         active = null;
       }
     }
@@ -130,7 +147,38 @@ export function CompetitionPhotoVoting() {
     );
   };
 
+  const onDeletePhoto = async (postId: string) => {
+    if (!isStaffModerator) return;
+    setModBusyId(postId);
+    setNotice(null);
+    const result = await deleteCommunityPost(postId);
+    setModBusyId(null);
+    if (!result.ok) {
+      setNotice("مقدرناش نحذف الصورة.");
+      return;
+    }
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setNotice("تم حذف الصورة.");
+  };
+
+  const onBanFromCompetitions = async (targetUserId: string, postId: string) => {
+    if (!isStaffModerator || !targetUserId) return;
+    setModBusyId(postId);
+    setNotice(null);
+    const result = await setUserCompetitionBlocked(targetUserId, true);
+    setModBusyId(null);
+    if (!result.ok) {
+      setNotice("مقدرناش نمنع المستخدم من المسابقات.");
+      return;
+    }
+    setNotice("تم منع المستخدم من المشاركة في المسابقات.");
+  };
+
   const onUpload = async () => {
+    if (isCompetitionBlocked) {
+      setNotice("تم منعك من المشاركة في المسابقات من قبل الإدارة.");
+      return;
+    }
     if (!competitionActive || !activeCompetition) {
       setNotice("لا توجد مسابقة نشطة حالياً");
       return;
@@ -161,16 +209,62 @@ export function CompetitionPhotoVoting() {
     setUploadBusy(false);
     if (!result.ok) {
       setNotice(
-        result.message === "no_active_competition"
-          ? "لا توجد مسابقة نشطة حالياً"
-          : "مقدرناش ننشر الصورة. حاول تاني.",
+        result.message === "competition_blocked"
+          ? "تم منعك من المشاركة في المسابقات من قبل الإدارة."
+          : result.message === "no_active_competition"
+            ? "لا توجد مسابقة نشطة حالياً"
+            : "مقدرناش ننشر الصورة. حاول تاني.",
       );
+      if (result.message === "competition_blocked") {
+        setIsCompetitionBlocked(true);
+      }
       return;
     }
     setDescription("");
     setFile(null);
     setPosts((prev) => [result.post, ...prev]);
     setNotice("تم نشر الصورة — شكراً للمشاركة.");
+  };
+
+  const renderUploadArea = () => {
+    if (isCompetitionBlocked) {
+      return (
+        <p className="text-red-500 font-bold text-center">
+          تم منعك من المشاركة في المسابقات من قبل الإدارة.
+        </p>
+      );
+    }
+    if (!competitionActive) {
+      return <p>لا توجد مسابقة نشطة حالياً</p>;
+    }
+    return (
+      <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="وصف الصورة"
+          required
+          rows={2}
+          className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
+        />
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
+          <span>{file ? file.name : "اختر صورة من جهازك"}</span>
+          <span className="text-xs text-yellow-400">Browse</span>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <PremiumButton
+          disabled={uploadBusy || !file || !description.trim()}
+          onClick={() => void onUpload()}
+        >
+          {uploadBusy ? "جاري الرفع…" : "انشر"}
+        </PremiumButton>
+      </div>
+    );
   };
 
   return (
@@ -184,7 +278,8 @@ export function CompetitionPhotoVoting() {
           <h2 className="font-display mt-2 text-2xl font-bold text-white sm:text-3xl">
             شارك فريمك… أو صوّت للأحسن
           </h2>
-          {competitionActive && activeCompetition ? (
+          {isCompetitionBlocked ? null : competitionActive &&
+            activeCompetition ? (
             <p className="mt-2 text-sm text-slate-400">
               المسابقة النشطة: {activeCompetition.title}. ارفع من جهازك مع وصف
               الصورة. هتنشر باسمك ({displayName}). صوت واحد لكل صورة لكل مستخدم.
@@ -195,36 +290,7 @@ export function CompetitionPhotoVoting() {
             </p>
           )}
 
-          {competitionActive ? (
-            <div className="mt-5 space-y-3 rounded-2xl border border-dashed border-white/20 bg-black/30 p-5">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="وصف الصورة"
-                required
-                rows={2}
-                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
-              />
-              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-slate-300 hover:border-yellow-400/40">
-                <span>{file ? file.name : "اختر صورة من جهازك"}</span>
-                <span className="text-xs text-yellow-400">Browse</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              <PremiumButton
-                disabled={uploadBusy || !file || !description.trim()}
-                onClick={() => void onUpload()}
-              >
-                {uploadBusy ? "جاري الرفع…" : "انشر"}
-              </PremiumButton>
-            </div>
-          ) : (
-            <p>لا توجد مسابقة نشطة حالياً</p>
-          )}
+          <div className="mt-5">{renderUploadArea()}</div>
           {notice ? (
             <p className="mt-3 text-sm text-yellow-400/90">{notice}</p>
           ) : null}
@@ -283,6 +349,30 @@ export function CompetitionPhotoVoting() {
                         : `▲ ${entry.vote_count}`}
                     </button>
                   </div>
+                  {isStaffModerator ? (
+                    <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3">
+                      <button
+                        type="button"
+                        disabled={modBusyId === entry.id}
+                        onClick={() => void onDeletePhoto(entry.id)}
+                        className="rounded-full border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-50"
+                      >
+                        حذف الصورة
+                      </button>
+                      {entry.user_id && entry.user_id !== userId ? (
+                        <button
+                          type="button"
+                          disabled={modBusyId === entry.id}
+                          onClick={() =>
+                            void onBanFromCompetitions(entry.user_id, entry.id)
+                          }
+                          className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 disabled:opacity-50"
+                        >
+                          منع من المسابقات
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>

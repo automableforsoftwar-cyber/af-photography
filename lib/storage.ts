@@ -75,3 +75,59 @@ export async function uploadCommunityImage(
 
   return { ok: true, publicUrl };
 }
+
+/**
+ * Upload image or video for the AI assistant → public URL for n8n payload.
+ */
+export async function uploadAssistantMedia(
+  file: File,
+): Promise<
+  | { ok: true; publicUrl: string; mediaType: "image" | "video" }
+  | { ok: false; message: string }
+> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, message: "login_required" };
+  }
+
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
+  if (!isImage && !isVideo) {
+    return { ok: false, message: "unsupported_type" };
+  }
+
+  const ext = extFromFile(file);
+  const base = file.name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 32);
+  const folder = isVideo ? "assistant-video" : "assistant-image";
+  const path = `${user.id}/${folder}/${Date.now()}-${base || "media"}.${ext}`;
+
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type,
+  });
+
+  if (error) {
+    console.error("assistant media upload:", error);
+    return { ok: false, message: "upload_failed" };
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const publicUrl = data?.publicUrl?.trim() || "";
+  if (!publicUrl || !/^https?:\/\//i.test(publicUrl)) {
+    return { ok: false, message: "url_failed" };
+  }
+
+  return {
+    ok: true,
+    publicUrl,
+    mediaType: isVideo ? "video" : "image",
+  };
+}

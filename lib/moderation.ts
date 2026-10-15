@@ -13,6 +13,7 @@ export async function fetchMyProfileFlags(): Promise<{
   title: string | null;
   isBlocked: boolean;
   isChatBlocked: boolean;
+  isCompetitionBlocked: boolean;
 }> {
   const {
     data: { user },
@@ -23,12 +24,13 @@ export async function fetchMyProfileFlags(): Promise<{
       title: null,
       isBlocked: false,
       isChatBlocked: false,
+      isCompetitionBlocked: false,
     };
   }
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, title, is_blocked, is_chat_blocked")
+    .select("role, title, is_blocked, is_chat_blocked, is_competition_blocked")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -39,6 +41,7 @@ export async function fetchMyProfileFlags(): Promise<{
       title: null,
       isBlocked: false,
       isChatBlocked: false,
+      isCompetitionBlocked: false,
     };
   }
 
@@ -48,6 +51,9 @@ export async function fetchMyProfileFlags(): Promise<{
     title: (data.title as string | null)?.trim() || titleForRole(role),
     isBlocked: Boolean(data.is_blocked),
     isChatBlocked: Boolean(data.is_chat_blocked),
+    isCompetitionBlocked: Boolean(
+      (data as { is_competition_blocked?: boolean }).is_competition_blocked,
+    ),
   };
 }
 
@@ -125,6 +131,49 @@ export async function deleteCommunityPost(
   if (error) {
     console.error("deleteCommunityPost:", error);
     return { ok: false, message: "delete_failed" };
+  }
+  return { ok: true };
+}
+
+/** Staff ban/unban a user from competition uploads. */
+export async function setUserCompetitionBlocked(
+  userId: string,
+  blocked: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const flags = await fetchMyProfileFlags();
+  if (!isStaffRole(flags.role) || flags.isBlocked) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id === userId) {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const targetRole = normalizeRole(target?.role);
+  if (isStaffRole(targetRole) && flags.role !== "instructor") {
+    return { ok: false, message: "forbidden" };
+  }
+  if (targetRole === "instructor") {
+    return { ok: false, message: "forbidden" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_competition_blocked: blocked })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("setUserCompetitionBlocked:", error);
+    return { ok: false, message: "update_failed" };
   }
   return { ok: true };
 }
