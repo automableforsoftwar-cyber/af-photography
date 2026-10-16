@@ -19,8 +19,8 @@ export const navLinks = [
   { label: "الـ DNA", href: "#dna" },
   { label: "الرحلة", href: "#journey" },
   { label: "الكورسات", href: "#curriculum" },
-  { label: "المسابقات", href: "/competitions" },
-  { label: "التصويت", href: "#public-gallery" },
+  { label: "المسابقات", href: "#competitions" },
+  { label: "التصويت", href: "#competitions" },
   { label: "المعرض", href: "#gallery" },
   { label: "المدرّب", href: "#mentor" },
 ] as const;

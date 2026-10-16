@@ -61,7 +61,7 @@ export function HomePage() {
         <Instructor />
         <Gallery />
         <section
-          id="public-gallery"
+          id="competitions"
           className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20 sm:px-8 lg:px-10"
         >
           <PublicShowcaseGallery />

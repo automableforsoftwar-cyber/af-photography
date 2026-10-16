@@ -61,7 +61,7 @@ export function Navbar() {
                 style={{ backgroundColor: "#0a0a0a" }}
               >
                 {navLinks.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.label}>
                     <a
                       href={link.href}
                       className="block rounded-xl px-3 py-3 text-sm font-medium text-white hover:bg-white/5 hover:text-yellow-400"
@@ -146,7 +146,7 @@ export function Navbar() {
 
         <ul className="hidden flex-1 items-center justify-center gap-8 lg:flex">
           {navLinks.map((link) => (
-            <li key={link.href}>
+            <li key={link.label}>
               <a
                 href={link.href}
                 className="text-sm font-medium text-slate-200 transition-colors hover:text-yellow-400"
